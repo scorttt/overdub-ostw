@@ -138,7 +138,7 @@ if (IsAlive())
     {
         CreateHudText(
             VisibleTo:      All(),
-            Text:           <" \n<0> Import failed! One or more [IMPORT <1>] parts are missing, paste the whole export again", IconString(Icon.Warning), importStamp>,
+            Text:           <" \n<0> Import failed! One or more [IMPORT <1>] parts is missing and/or incorrect, paste the whole export again", IconString(Icon.Warning), importStamp>,
             Location:       Location.Top,
             SortOrder:      0,
             TextColor:      Color.Red,
@@ -215,7 +215,8 @@ if (IsAlive())
 
         ImpAt(Chan.Header, 3, 1);
         Number t! = impV[0];
-        trackHero[t] = AllHeroes()[impV[1]];
+        // by its name (ExpEnd), else by its index: older exports, or a renamed hero
+        trackHero[t] = AllHeroes().Filter(h => <"<0>", h> == importData[importParts][k]).Append(AllHeroes()[impV[1]]).First;
         trackTeam[t] = impV[2];
 
         ImpAt(Chan.Header, 2, 2);

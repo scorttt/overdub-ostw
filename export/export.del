@@ -9,7 +9,7 @@ import "../main.del";
 // tracks at game start, replacing theirs. the stamp (game time of the export) identifies an export: a part runs unless a
 // higher stamp is already loaded, and a higher stamp than the loaded one clears importData first. so an exports parts
 // load in any order, and with several pasted exports the highest stamp wins. the last part stores the part count, so a
-// missing part is reported instead of imported. stamps from different lobbies dont compare, its an identifier, not an age
+// missing part is reported instead of imported, and the tracks' heroes by name (ExpEnd). stamps from different lobbies dont compare, its an identifier, not an age
 //
 // a tree is a Custom String of 119 chars with "{0}{1}{2}" after them, its 3 slots each another one like it, and their
 // slots strings of 128 chars: 4 outer and 9 inner strings, TREE_CHARS chars. in game an outer string costs 2 elements and
@@ -370,8 +370,8 @@ void ExportTracks() playervar "export - export"
     }
     ExpPut(dir, 2);
 
-    ExpLog(<'*/ Custom String(\"<0>\"))))); Global.importMap = Custom String(\"<1>\"); Global.importParts = <2>; } }', expPending, CurrentMap(),
-        Floor((expStrings - 1) / (TREE_STRINGS * IMPORT_ARRAY)) + 1>);
+    ExpLog(<'*/ Custom String(\"<0>\"))))); Global.importMap = Custom String(\"<1>\"); /*', expPending, CurrentMap()>);
+    ExpEnd(heroes);
 
     tracksBusy = false;
     expProgress = -1;

@@ -182,3 +182,15 @@ void ExpPut(Number[] v, Number width!) playervar "export - put"  // v plain, eve
 
     ExpAppend(s);
 }
+
+// ends the export's last rule: its part count, and the tracks' heroes ("Ana, Mei") by name in the importData entry after
+// the data. AllHeroes() is in hero GUID order, not release order, so a new hero can land before an exported one's index
+void ExpEnd(in String heroes)
+{
+    ExpLog(<'*/ Global.importParts = <0>; Set Global Variable At Index(importData, Global.importParts, Array( /*',
+        Floor((expStrings - 1) / (TREE_STRINGS * IMPORT_ARRAY)) + 1>);
+    String[] names! = StringSplit(heroes, ", ");
+    for (Number k! = 0; k < names.Length; k++)
+        ExpLog(<'*/ <0>Custom String(\"<1>\") /*', k == 0 ? "" : ", ", names[k]>);
+    ExpLog("*/ )); } }");
+}
