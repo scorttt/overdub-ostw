@@ -34,3 +34,5 @@ import "export/import.del";
 // import "tests/drift-test.del";
 // import "tests/text-test.del";
 // import "tests/playback-test.del";
+// import "tests/fixes-test.del";
+// import "tests/latency-test.del";

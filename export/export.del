@@ -228,7 +228,6 @@ void ExportTracks() playervar "export - export"
         return;
     }
 
-    // an export started during the last ones final wait restarts this, the last ones text is still up
     if (expProgress < 0)
         DestroyHudText(expHud);
 
@@ -377,7 +376,17 @@ void ExportTracks() playervar "export - export"
     tracksBusy = false;
     expProgress = -1;
     DestroyProgressBarHudText(expHudProg);
-    Wait(15);
-    DestroyHudText(expHud);
-    expProgress = 0;
+}
+
+// in its own rule because ExportTracks is started with async!, a wait in it would drop any export attempts while the text is visible
+rule: "export done text"
+Event.OngoingPlayer
+if (expProgress < 0)
+{
+    WaitIfTrue(15);
+    if (expProgress < 0)
+    {
+        DestroyHudText(expHud);
+        expProgress = 0;
+    }
 }
