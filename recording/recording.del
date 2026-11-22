@@ -207,7 +207,7 @@ if (Health() != RecHealth())
 
 Number REC_COUNTDOWN: 3;
 playervar Number recCount!; // seconds left of the countdown, shown in the time elapsed text. 0 while not counting
-playervar Boolean preRolling!;
+playervar Boolean preRolling!;  // the other tracks play during the countdown, all of it or its last CORRECT_LEAD ticks
 Number PUNCH_POS_RADIUS: 0.50;
 Number PUNCH_AIM_DIST:   10;
 Number PUNCH_AIM_SIZE:   0.05; // sphere radius per meter
@@ -354,14 +354,16 @@ if (!timelineOpen)
 
     // retake countdown only while lined up, and cancels if the player looks away. move speed is 0 while lined up, so keys can be held before recording actually starts
     Number end! = -1; // countdown end. -1 while not counting
+    Boolean full! = false; // the whole pre-roll
     while (recordArmed && !timelineOpen && (end == -1 || Time() < end))
     {
         tickJ = !guides || PunchLinedUp();
         if (tickJ && end == -1)
         {
             end = Time() + REC_COUNTDOWN;
-            // only with a whole countdown of timeline before the take, a take near the start gets a plain countdown
-            preRolling = OptOn(Opt.PreRoll) && OptOn(Opt.PlayWhileRecording) && target >= REC_COUNTDOWN / delta;
+            // only with a whole countdown of timeline before the take
+            full = OptOn(Opt.PreRoll) && OptOn(Opt.PlayWhileRecording) && target >= REC_COUNTDOWN / delta;
+            preRolling = full;
             punchLocked = guides;
             ApplyMovementState();
         }
@@ -381,9 +383,20 @@ if (!timelineOpen)
             tickI = Ceil(end - Time());
             if (tickI != recCount)
                 recCount = tickI;
-            // reaches the take's start as the countdown ends
+
+            // countdown's frame, the take's start on its last tick, the one before the first sample
+            tickK = target + 1 - Ceil((end - Time()) / delta);
+            
+            // without the whole preroll the bots still lead into the take's start over the last CORRECT_LEAD ticks, while the playhead waits there
+            if (!preRolling && OptOn(Opt.PlayWhileRecording) && tickK >= target - CORRECT_LEAD)
+                preRolling = true;
+
             if (preRolling)
-                currFrame = target - Near((end - Time()) / delta);
+            {
+                playClockFrame = tickK;
+                if (full)
+                    currFrame = tickK;
+            }
         }
         MinWait();
     }
@@ -566,6 +579,7 @@ if (recording)
         return;
     }
 
+    // the end frame, one past the sample: bots see it a tick late, with the next sample
     currFrame = tickK;
 
     MinWait();

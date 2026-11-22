@@ -47,11 +47,17 @@ playervar Boolean botResetDue!;
 playervar Sample[] botChunkA;      // chunk botWinC of the track
 playervar Vector[] botNextPos;     // the first correctLead positions of chunk botWinC + 1
 playervar Vector[] botNextLook;
+playervar Number[] botNextBtn;     // the first CORRECT_LEAD + 1 Ctrl.Y
 playervar Number botWinC!;         // chunk in botChunkA, -2 before the first load
 
-// StartForcingPosition() seems to be about ~6-7 ticks late. (5 was 1.9 frames behind, 6 was 0.8 behind, and 7 was 0.1 ahead), abilities started 1.25 and 0.5 frames early and 0.25 late against the position. 
-// StartFacing() is the same, aim was 5.9 frames behind its position, so it does the same thing as StartForcingPosition()
+// StartForcingPlayerPosition() and StartFacing() show ~6-7 ticks late, both are read this far ahead
 Number CORRECT_LEAD: 7;
+
+// held buttons and abilities in use, which a dummy bot reads CORRECT_LEAD - 1 ahead
+Number BotLedBits(Number b): b % Bit.Ground;
+
+// frames the throttle reads ahead, delayed less than the position for some reason??
+Number THROTTLE_LEAD: 3;
 
 Number RETAP_FRAMES: 10;
 Number FIRST_PERSON_DEATH_WAIT: 30; // amount of frames the dead human waits for the recording to die where they did
@@ -61,8 +67,13 @@ Number RESET_REST: 0.25; // seconds the playhead rests before a seeked bot's con
 Vector BotPos(Player p = player): p.botChunkA[p.botS % CHUNK_SIZE].Pos;
 Vector BotLook():     botChunkA[botS % CHUNK_SIZE].Look;
 Vector BotCtrl():     botChunkA[botS % CHUNK_SIZE].Ctrl;
-Number BotLeadS(): Min(botS + CORRECT_LEAD, botFrames - 1);
-Vector BotLeadPos(Number s):  Floor(s / CHUNK_SIZE) == botWinC ? botChunkA[s % CHUNK_SIZE].Pos  : botNextPos[s % CHUNK_SIZE]; // s from BotLeadS
+// the owner's frame. a seamless loop's last LOOP_LEAD frames read as the frames before its start, so bots lead into it before the wrap
+Number BotOwnerFrame(): botOwner.currFrame - botOwner.playLoopShift;
+// the owner's play clock, ahead of currFrame while the playhead waits for the bots to lead in
+Number BotClockFrame(): (botOwner.playMode == PlayMode.Play || botOwner.preRolling ? Min(botOwner.playClockFrame, botOwner.currFrame) : botOwner.currFrame) - botOwner.playLoopShift; // i should be shot
+Number BotLeadS(Number f): Clamp(f - botStart + CORRECT_LEAD, 0, botFrames - 1); // f from BotClockFrame
+Vector BotLeadPos(Number s):  Floor(s / CHUNK_SIZE) == botWinC ? botChunkA[s % CHUNK_SIZE].Pos : botNextPos[s % CHUNK_SIZE]; // s from BotLeadS
+Number BotBtnAt(Number s):    Floor(s / CHUNK_SIZE) == botWinC ? botChunkA[s % CHUNK_SIZE].Ctrl.Y : botNextBtn[s % CHUNK_SIZE];
 
 void SpawnTrackBot(Number t!) playervar "bot - spawn track bot"
 {
@@ -122,7 +133,11 @@ void SetBotButtons() playervar "bot - set buttons"
         if (Floor(botBtn / (2^tickI)) % 2 != Floor(botButtons / (2^tickI)) % 2)
         {
             if (HasBit(botBtn, 2^tickI))
+            {
                 StartHoldingButton(player, BOT_BUTTONS[tickI]);
+                if (tickI == 2 || tickI == 3) // fresh ability presses get RETAP_FRAMES to start before tapped again
+                    botRetapFrame = botF; // driven loop's frame
+            }
             else
                 StopHoldingButton(player, BOT_BUTTONS[tickI]);
         }
@@ -153,19 +168,18 @@ void StopBotMotion() playervar "bot - stop motion"
     botMoving = false;
 }
 
-// hypothetical fix: ticks skipped under load moves the playhead by 2 and the frame in between is never held. a button that's only down in that frame is pressed instead
-// both frames have to be in the window, large jumps aren't checked
-void BotSkippedTap()
+// presses taps the bot never read: buttons let go of between frames f and t that it doesn't hold. uses tickI to tickK
+void BotPressTaps(Number f!, Number t!) playervar "bot - press taps"
 {
-    tickJ = botS % CHUNK_SIZE + 1; // skipped frame, new one is after it
-    if (tickJ + 1 >= CHUNK_SIZE)
-        return;
-
-    tickK = botChunkA[tickJ].Ctrl.Y;
-    for (tickI = 0; tickI < 10; tickI++) // BOT_BUTTONS
+    for (tickJ = f; tickJ <= t; tickJ++)
     {
-        if (HasBit(tickK, 2^tickI) && !HasBit(botButtons, 2^tickI) && !HasBit(botChunkA[tickJ + 1].Ctrl.Y, 2^tickI))
-            PressButton(player, BOT_BUTTONS[tickI]);
+        Number next! = BotBtnAt(tickJ); // tickK is the frame before
+        for (tickI = 0; tickJ > f && tickI < 10; tickI++) // BOT_BUTTONS
+        {
+            if (HasBit(tickK, 2^tickI) && !HasBit(next, 2^tickI) && !HasBit(botButtons, 2^tickI))
+                PressButton(player, BOT_BUTTONS[tickI]);
+        }
+        tickK = next;
     }
 }
 
@@ -195,7 +209,8 @@ void LoadBotWindow() playervar "bot - load window"
     tickI = Floor(botS / CHUNK_SIZE) + 1;
     ReadChunkToA(botTrack);
     botNextPos = botChunkA.Slice(0, CORRECT_LEAD).Map(s => s.Pos);
-    
+    botNextBtn = botChunkA.Slice(0, CORRECT_LEAD + 1).Map(s => s.Ctrl.Y); // + 1 for the lead frame after a skipped tick
+
     if (IsDummyBot())
         botNextLook = botChunkA.Slice(0, CORRECT_LEAD).Map(s => s.Look);
 
@@ -287,13 +302,16 @@ if (EntityExists(botOwner))
 
         botHoldFocus = botTrack != botOwner.focusedTrack && botOwner.playbackActive && !OptOn(Opt.PlayAll, botOwner);
 
-        botF = botHoldRec ? TakeStart(botOwner) : botHoldFocus ? botOwner.trackHold[botTrack] : botOwner.currFrame;
+        botF = botHoldRec ? TakeStart(botOwner) : botHoldFocus ? botOwner.trackHold[botTrack] : BotOwnerFrame();
 
         tickK = false; // motion stopped this pass
 
-
-        if (((botOwner.playMode == PlayMode.Play || botOwner.preRolling || (botOwner.recording && !botHoldRec)) && !botHoldFocus
-            && botF >= botStart && botF < botStart + botFrames && botF >= botFrame) != botDriven)
+        // a playhead that goes back releases a driven bot for a pass, a resting bot is driven at once
+        if (((botOwner.playMode == PlayMode.Play || botOwner.preRolling || (botOwner.recording && !botHoldRec)) 
+                && !botHoldFocus
+                && botF >= botStart - CORRECT_LEAD 
+                && botF < botStart + botFrames 
+                && (!botDriven || Max(botF, botStart) >= botFrame)) != botDriven)
         {
             botDriven = !botDriven;
 
@@ -314,10 +332,15 @@ if (EntityExists(botOwner))
                 if (IsDummyBot())
                     botResetDue = true;
             }
-            else if (botResetDue) // driven again before the playhead rested
+            else
             {
-                ResetHeroConsumables();
-                botResetDue = false;
+                botFrame = -1; // the motion starts on this pass
+
+                if (botResetDue) // driven again before the playhead rested
+                {
+                    ResetHeroConsumables();
+                    botResetDue = false;
+                }
             }
         }
 
@@ -330,10 +353,11 @@ if (EntityExists(botOwner))
         }
 
         // apply new frame. teleporting in the same tick as StopForcingPlayerPosition() doesnt work, so released bots get its frame next tick
-        botF = Clamp(botF, botStart, botStart + botFrames - 1);
+        // driven from CORRECT_LEAD frames before the track, holding its first sample while the forced position leads in
+        botF = Clamp(botF, botStart - CORRECT_LEAD, botStart + botFrames - 1);
         if (botFrames > 0 && botF != botFrame && !tickK && !IsDragging(player))
         {
-            botS = botF - botStart;
+            botS = Max(botF - botStart, 0);
             if (Floor(botS / CHUNK_SIZE) != botWinC)
                 LoadBotWindow();
 
@@ -343,7 +367,7 @@ if (EntityExists(botOwner))
             botSampleDead = readPos.Y >= Bit.Dead;
 
             botFacing = LookDir(readLook);
-            if (IsDummyBot() && IsAlive())
+            if (IsDummyBot() && IsAlive() && !botMoving) // a moving bot is turned by StartFacing
                 SetFacing(player, botFacing, Relative.ToWorld);
 
             // normal damage while recording
@@ -366,13 +390,20 @@ if (EntityExists(botOwner))
             {
                 botMoving = true;
                 botThrottle = Vector(readPos.X, 0, readPos.Z);
-                tickI = BotLeadS();
+                tickI = BotLeadS(BotClockFrame());
                 botForcePos = BotLeadPos(tickI);
+
+                // a forced position started away from its target closes in with a tail
+                Teleport(player, botForcePos);
                 StartThrottleInDirection(player, botThrottle, Mag(botThrottle), Relative.ToPlayer, ThrottleBehavior.ReplaceExistingThrottle, ThrottleRev.DirectionAndMagnitude);
                 StartForcingPlayerPosition(player, botForcePos, true);
 
+                // a bot starting mid-playback skipped its first CORRECT_LEAD - 1 frames of buttons, press their taps now. never from before the trim start, a looping bot starts before it
                 if (IsDummyBot())
+                {
                     StartFacing(player, botFacing, 100000, Relative.ToWorld, FacingRev.DirectionAndTurnRate);
+                    BotPressTaps(Max(botS, botOwner.trimStart - botStart - 1), tickI - 1);
+                }
             }
             else if (!botDriven && (IsDummyBot() || !botSampleDead))
             {
@@ -485,19 +516,34 @@ if (EntityExists(botOwner))
         {
             // the owner's playKey is one number, so the check every tick stays short. the bot's track keeps its start and length as long as the bot exists
             // it also ends when the playhead goes back (playback looped), the bot then starts over from the new frame
-            while (IsAlive() && botOwner.playKey == botKey
-                && botOwner.currFrame >= botS + botStart && botOwner.currFrame < botStart + botFrames)
+            botF = BotOwnerFrame();
+            while (IsAlive() && botOwner.playKey == botKey && Max(botF, botStart) >= botS + botStart && botF < botStart + botFrames)
             {
-                if (botOwner.currFrame - botStart - botS == 2)
-                    BotSkippedTap();
+                // a tick skipped under load moves the playhead by 2: press the taps of the frame in between (a bot's lead frame in between)
+                if (botF - botStart - botS == 2)
+                    BotPressTaps(botS + (IsDummyBot() ? CORRECT_LEAD : 1), botS + (IsDummyBot() ? CORRECT_LEAD + 1 : 2));
 
-                botS = botOwner.currFrame - botStart;
+                botS = Max(botF - botStart, 0); // holds the first sample while leading into the track
 
                 if (Floor(botS / CHUNK_SIZE) != botWinC)
                     LoadBotWindow();
 
                 readPos = BotCtrl(); // frame's Ctrl, only read once
+
+                // leading in (before the track, or while the playhead waits): no buttons from the current frame
+                tickK = BotClockFrame();
+                if (tickK < Max(botF, botStart))
+                    readPos = Vector(0, 0, 0);
+
                 botBtn = readPos.Y;
+
+                // a bot acts from where it's forced to, ahead of what it shows, so its buttons (and in-use bits, for the retap below) are read ahead too, also while leading in
+                if (IsDummyBot())
+                {
+                    tickJ = BotLeadS(tickK) - 1; // -1 further than that before the track, nothing is there
+                    tickJ = tickJ < 0 ? 0 : BotBtnAt(tickJ);
+                    botBtn += BotLedBits(tickJ) - BotLedBits(botBtn);
+                }
 
                 // recording dies here, full loop kills the bot
                 if (botBtn >= Bit.Dead)
@@ -509,17 +555,17 @@ if (EntityExists(botOwner))
                 if (botBtn % Bit.UsingAb1 != botButtons)
                     SetBotButtons();
 
-                botThrottle = Vector(readPos.X, 0, readPos.Z);
-
                 readLook = BotLook();
                 tickJ = readLook.Z > 0 ? readLook.Z : MaxHealth(); // recorded health
 
                 // bot faces its lead sample like position does, the human's camera turn isnt measured
-                tickI = BotLeadS();
+                // throttle leads by THROTTLE_LEAD while in the window's chunk
+                tickI = BotLeadS(tickK);
                 if (Floor(tickI / CHUNK_SIZE) == botWinC)
                 {
                     botForcePos = botChunkA[tickI % CHUNK_SIZE].Pos;
-                    
+                    readPos = botChunkA[Max(tickI % CHUNK_SIZE - (CORRECT_LEAD - THROTTLE_LEAD), 0)].Ctrl;
+
                     if (IsDummyBot())
                         readLook = botChunkA[tickI % CHUNK_SIZE].Look;
                 }
@@ -531,41 +577,45 @@ if (EntityExists(botOwner))
                         readLook = botNextLook[tickI % CHUNK_SIZE];
                 }
                 botFacing = LookDir(readLook);
+                botThrottle = Vector(readPos.X, 0, readPos.Z);
 
                 if (!botLive && Health() != tickJ)
                     SetPlayerHealth(player, tickJ);
 
                 // some abilities somehow randomly break on bots (and only bots for some reason!!!), press it again at most every RETAP_FRAMES
-                if (botBtn % Bit.UsingUlt >= Bit.UsingAb1 && Abs(botOwner.currFrame - botRetapFrame) > RETAP_FRAMES) // ability 1 or 2 in use
+                if (botBtn % Bit.UsingUlt >= Bit.UsingAb1 && Abs(botF - botRetapFrame) > RETAP_FRAMES) // ability 1 or 2 in use
                 {
                     if (HasBit(botBtn, Bit.UsingAb1) && !IsUsingAbility1())
                     {
                         StopHoldingButton(player, Button.Ability1);
                         PressButton(player, Button.Ability1);
                         botButtons -= HasBit(botButtons, Bit.Ability1) ? Bit.Ability1 : 0; // held again on the next frame
-                        botRetapFrame = botOwner.currFrame;
+                        botRetapFrame = botF;
                     }
                     else if (HasBit(botBtn, Bit.UsingAb2) && !IsUsingAbility2())
                     {
                         StopHoldingButton(player, Button.Ability2);
                         PressButton(player, Button.Ability2);
                         botButtons -= HasBit(botButtons, Bit.Ability2) ? Bit.Ability2 : 0;
-                        botRetapFrame = botOwner.currFrame;
+                        botRetapFrame = botF;
                     }
                 }
 
                 MinWait();
+                botF = BotOwnerFrame();
             }
             botFrame = botS + botStart;
         }
 
-        MinWait();
+        // a driven loop that ended on a new playKey goes on in this tick, it waited inside
+        if (botOwner.playKey == botKey)
+            MinWait();
 
         // an owner's playKey reads 0
         if (IsDummyBot() && !botDriven && botFrame != -1)
         {
             WaitUntil(IsDead() != botDead || botOwner.playKey != botKey
-                || (!botHoldRec && !botHoldFocus && Clamp(botOwner.currFrame, botStart, botStart + botFrames - 1) != botF), botResetDue ? RESET_REST : 0.5);
+                || (!botHoldRec && !botHoldFocus && Clamp(BotOwnerFrame(), botStart - CORRECT_LEAD, botStart + botFrames - 1) != botF), botResetDue ? RESET_REST : 0.5);
         }
     }
 

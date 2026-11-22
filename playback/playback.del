@@ -7,22 +7,38 @@ enum Snap
     Busy    // ability in use
 }
 
-playervar Number playClock; // Time() frame 0 is at while playing, regular var since playback reads it every tick
+playervar Number playClock!;     // Time() frame 0 is at
+// the frame playClock is at. bots lead from it, their own Time() is a tick ahead of the currFrame they see
+playervar Number playClockFrame;
+// what bots take off currFrame: the loop's length over a seamless loop's last LOOP_LEAD frames, 0 otherwise
+playervar Number playLoopShift!;
+// CORRECT_LEAD, plus the ~2 ticks a moving bot takes to see the owner and be released. a teleport shows 7-8 ticks late, so the jump can still be a tick off
+Number LOOP_LEAD: CORRECT_LEAD + 2;
+
+// bots lead into the start before the wrap, so the playhead doesn't wait there
+Boolean SeamlessLoop(): CanLoop() && trimEnd - trimStart > LOOP_LEAD * 2 && !firstPerson;
 
 // frames come from the time like recording does, a tick skipped under load moves the playhead on by more than 1
 // clock is set once and not added to every tick, the rounding of each add made the playhead stall or jump a frame
-// anything else that moves the playhead (even during playback) also sets playClock
+// "play start snap" sets playClock CORRECT_LEAD frames back, so the playhead waits that many ticks while the bots' forced positions
+// lead in (BotClockFrame). anything else that moves the playhead (even during playback) also sets playClock
 rule: "play"
 Event.OngoingPlayer
 if (playMode == PlayMode.Play)
 if (currFrame < trimEnd)
 {
-    playClock = Time() - (currFrame + 1) * delta; // the first frame moves at once
     while (playMode == PlayMode.Play && currFrame < trimEnd)
     {
-        currFrame = Min(Near((Time() - playClock) / delta), trimEnd);
+        playClockFrame = Near((Time() - playClock) / delta);
+        currFrame = Max(currFrame, Min(playClockFrame, trimEnd));
+        tickI = SeamlessLoop() && currFrame > trimEnd - LOOP_LEAD ? trimEnd - trimStart + 1 : 0;
+        if (tickI != playLoopShift)
+            playLoopShift = tickI;
         MinWait();
     }
+    // not at the wrap, "playback range end" clears it in the tick it moves the playhead
+    if (playMode != PlayMode.Play)
+        playLoopShift = 0;
     LoopIfConditionIsTrue();
 }
 
@@ -34,8 +50,12 @@ if (playMode == PlayMode.Rewind ? currFrame <= trimStart : currFrame >= trimEnd)
 {
     if (playMode == PlayMode.Play && CanLoop())
     {
+        // otherwise the playhead waits CORRECT_LEAD ticks while the bots lead in
+        tickI = SeamlessLoop() ? 0 : CORRECT_LEAD;
         currFrame = trimStart;
-        playClock = Time() - trimStart * delta; // "play" is still in its loop and moves on from here
+        playLoopShift = 0;
+        playClock = Time() - (trimStart - tickI) * delta; // "play" moves on from here
+        playClockFrame = trimStart - tickI;
     }
     else
     {
@@ -141,6 +161,9 @@ if (playMode == PlayMode.Starting)
         if (!snapRestart)
             trackHold = TRACK_IDS.Map(t => currFrame);
 
+        playClock = Time() - (currFrame - CORRECT_LEAD) * delta; // the playhead waits CORRECT_LEAD ticks, see "play"
+        playClockFrame = currFrame - CORRECT_LEAD;
+        playLoopShift = 0;
         playMode = PlayMode.Play;
     }
     snapRestart = false;
