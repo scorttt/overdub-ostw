@@ -85,7 +85,8 @@ class Track:
 # ---- the import's reading, like import.del. an export's text into importData entries, each a list of trees ----
 def strings_of(rule):
     # flat strings or trees, either way the strings in written order are the stream
-    text = re.sub(r'importMap = Custom String\("[^"]*"\)', "", rule, flags=re.I)
+    # the map and the heroes' names follow the data
+    text = re.split(r'importMap = ', rule, flags=re.I)[0]
     return [m.group(1).replace("{0}{1}{2}", "") for m in re.finditer(r'Custom String\("([^"]*)"', text)]
 
 
