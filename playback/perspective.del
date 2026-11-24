@@ -93,7 +93,7 @@ if (botTrack != focusedTrack)
 
     botWinC = -2; // the window still holds the previous track's chunks, "bot playback" reapplies the frame
 
-    // a new bot is a load spike (~105), switching tracks quickly would be bad
+    // a new bot is a load spike, switching tracks quickly would be bad
     WaitUntil(ServerLoad() < 100, 3);
     if (prev != focusedTrack)
         SpawnIdleTrackBot(prev);

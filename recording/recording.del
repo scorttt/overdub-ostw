@@ -318,7 +318,11 @@ if (!timelineOpen)
 
         // a playhead past the track's end is moved to its last frame
         if (currFrame >= recStart + recFrames)
-            SmallMessage(player, <"Retaking from the end of track <0> (<1>)", focusedTrack + 1, FormattedFrameToSec(target)>);
+        {
+            tickK = target;
+            FrameText();
+            SmallMessage(player, <"Retaking from the end of track <0> (<1>)", focusedTrack + 1, frameText>);
+        }
 
         // the sphere sits along the recorded aim from the player's eye height at the spot, backed off the first surface until it just touches it
         Vector eye! = punchPos + EyePos() - PosOf();

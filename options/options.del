@@ -136,7 +136,7 @@ globalvar String[] OPT_LABEL;
 // Perspective      PerspDetached PerspOrbit  PerspFirstPerson PlayAll           PlayWhileRecording PreRoll KeepBotsDead
 // DamageScale      DamageValue   Noclip      NoclipAutoOff    NoclipNoCollision Export             EndGame RecHealth    RecHealthValue
 // 
-// array literals, one call per item cost was at least 400 more elements (7 writes each)
+// array literals, one call per item cost more elements (7 writes each)
 void InitOptionTables()
 {
     OPT_KIND = [

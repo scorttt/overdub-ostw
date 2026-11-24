@@ -134,7 +134,7 @@ void LoadTrackStage(in Number t)
 }
 
 // recTake's chunks onto the end of track t
-void AppendTrackStage(Number t!) playervar "rec - append track"
+void AppendTrackStage(in Number t)
 {
     switch (t)
     {
@@ -154,7 +154,7 @@ void AppendTrackStage(Number t!) playervar "rec - append track"
 }
 
 // track t cut to its first tickI chunks, with recTake's chunks after them. one write, a write into a stored track is a load spike
-void CutAppendTrackStage(Number t!) playervar "rec - cut and append track"
+void CutAppendTrackStage(in Number t)
 {
     switch (t)
     {

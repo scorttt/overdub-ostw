@@ -26,10 +26,10 @@ globalvar String[][] importData;
 globalvar String importMap;
 globalvar Number importParts;   // rules the export was split into
 
-Number IMPORT_ARRAY:    15;     // trees per importData entry and per pasted rule, a rule cant be pasted above ~98 KB (15 is ~76 KB)
-Number TREE_CHARS:      1628;   // chars per tree, 4 outer strings of 119 and 9 inner of 128
+Number IMPORT_ARRAY:    15;     // trees per importData entry and per pasted rule, a rule cant be pasted above ~98 KB
+Number TREE_CHARS:      4 * 119 + 9 * 128; // 4 outer strings and 9 inner, OSTW simplifies to 1628 at compile time
 Number TREE_STRINGS:    13;
-Number ENTRY_CHARS:     24420;  // IMPORT_ARRAY * TREE_CHARS, every entry but the last is full
+Number ENTRY_CHARS:     IMPORT_ARRAY * TREE_CHARS; // every entry but the last is full
 Number HEALTH_FLAG:     32768;  // buttons bit: health follows, only export when it changes
 Number KEY_GAP_MAX: 2047;       // steps keys
 Number CURVE_GAP_MAX: 1023;     // position and facing keys, a delta or absolute key holds its gap in 1024 values of its first char

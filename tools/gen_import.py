@@ -450,6 +450,14 @@ def look_key(gap, st, pd):
     return [gap + SHORT_KEYS, st[0] + 2048, st[1] + 2048]
 
 
+# a position key that isn't absolute, st its deltas in steps: short when its gap and x, z fit, else a delta key. 1 char each
+def pos_key(gap, st):
+    z = st[2] + 512; x = st[0] + 512
+    if gap <= 8 and 0 <= z < 1024 and 0 <= x < 1024:
+        return [(gap - 1) * 256 + z // 4, z % 4 * 1024 + x, st[1] + 2048]
+    return [gap + SHORT_KEYS, st[0] + 2048, st[1] + 2048, st[2] + 2048]
+
+
 # a Packed2 steps key: v is throttle x, buttons, throttle z as written, last the last key's, hp the health * 1024 when it
 # changed (else None). its (value, width) pairs. x % 4095 % 2048 is 0 for 0, 2048 and 4095 only
 def step_key(gap, v, last, hp):
@@ -512,11 +520,8 @@ class Encoder:
                 self.put(look_key(gap, st, pd), 1)
                 pd = st[:2]
                 kv = [kv[i] + st[i] * q[i] for i in range(3)]
-            elif not absolute and gap <= 8 and abs(st[0] + 0.5) < 512 and abs(st[2] + 0.5) < 512:
-                self.put([(gap - 1) * 256 + (st[2] + 512) // 4, (st[2] + 512) % 4 * 1024 + st[0] + 512, st[1] + 2048], 1)
-                kv = [kv[i] + st[i] * q[i] for i in range(3)]
             elif not absolute:
-                self.put([gap + SHORT_KEYS] + [x + 2048 for x in st], 1)
+                self.put(pos_key(gap, st), 1)
                 kv = [kv[i] + st[i] * q[i] for i in range(3)]
             elif c == 0:
                 self.put([gap + ABS_KEYS], 1)

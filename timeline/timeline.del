@@ -31,7 +31,7 @@ enum Cursor
 }
 
 Number TRACK_HALF:  2.60; // timeline track spans -TRACK_HALF to TRACK_HALF on the menu x axis
-Number TRACK_WIDTH: 5.2;
+Number TRACK_WIDTH: 2 * TRACK_HALF;
 Number TOOLTIP_Y:   -1.085;
 Number TOOLTIP_SIZE: 0.9;
 
@@ -65,18 +65,20 @@ playervar Number dragTarget;
 playervar Number hoverFlagIndex;
 playervar Number objectiveNext!; // objective the objective button teleports to
 
-globalvar Number objectiveCount!;
-globalvar Boolean hasPayload!;    // payload modes put the payload first in the objective button's cycle
+globalvar Number objectiveCount!;  // positions in the objective button's cycle
+globalvar Number objectiveOffset!; // objectiveNext + this is the objective, -1 the payload
 
 void InitObjectives()
 {
     objectiveCount =
         [GameMode.Flashpoint, GameMode.Clash].Contains(CurrentGameMode()) ? 5
-      : [GameMode.Control, GameMode.Escort, GameMode.Hybrid].Contains(CurrentGameMode()) ? 3
+      : [GameMode.Escort, GameMode.Hybrid].Contains(CurrentGameMode()) ? 4 // the payload, then 3 objectives
+      : [GameMode.Control].Contains(CurrentGameMode()) ? 3
       : [GameMode.Assault, GameMode.CaptureTheFlag].Contains(CurrentGameMode()) ? 2
-      : [GameMode.Elimination, GameMode.FreezethawElimination, GameMode.Push].Contains(CurrentGameMode()) ? 1 // push only has one usable position (objective 1, see the objective button)
+      : [GameMode.Elimination, GameMode.FreezethawElimination, GameMode.Push].Contains(CurrentGameMode()) ? 1
       : 0;
-    hasPayload = [GameMode.Escort, GameMode.Hybrid].Contains(CurrentGameMode());
+    // push's real objective position is the second objective for some reason
+    objectiveOffset = [GameMode.Escort, GameMode.Hybrid].Contains(CurrentGameMode()) ? -1 : CurrentGameMode() == GameMode.Push ? 1 : 0;
 }
 
 Color BluePulse():
@@ -304,7 +306,6 @@ if (timelineOpen || closing)
     WaitUntil(TrackCount() != count || !(timelineOpen || closing), 99999);
 
     DestroyTexts(trackMarkerTexts);
-    trackMarkerTexts = [];
     LoopIfConditionIsTrue();
 }
 

@@ -132,7 +132,6 @@ if (confirmItem != Item.None)
     WaitUntil(confirmItem == Item.None || !optionsMenuOpen, 99999);
 
     DestroyTexts(confirmTexts);
-    confirmTexts = [];
 }
 
 void ActivateConfirm(Number c!) playervar "opt - confirm input"

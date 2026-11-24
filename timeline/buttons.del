@@ -77,7 +77,7 @@ Color ButtonColor(Number | Ctrl id, Boolean active = false):
             ? Color.White
             : CustomColor(140, 140, 140, 255);
 
-// button positions and hitboxes by Ctrl, and the texts of buttons with a fixed label. arrays rather than a call per button, which was about ~250 more elements and 6 writes each
+// button positions and hitboxes by Ctrl, and the texts of buttons with a fixed label. arrays, a call per button costs more elements
 rule: "init buttons"
 {
     //                  Play    Pause   Stop    Rewind  Forward  PrevFrame  NextFrame  Options    Record  Track   AddFlag  DeleteTrack  ChangeHero     Team    Loop    GoTo           Objective          PrevTrack  NextTrack
@@ -338,16 +338,12 @@ void ActivateCtrl(Number | Ctrl ctrl) playervar "tl - selection handler"
             break;
         case Ctrl.Objective:
             // dont allow payload in the tp cycle unless it has progress
-            if (hasPayload && objectiveNext == 0 && PayloadProgressPercentage() <= 0)
+            if (objectiveOffset == -1 && objectiveNext == 0 && PayloadProgressPercentage() <= 0)
                 objectiveNext = 1;
 
-            Number o! = objectiveNext - (hasPayload ? 1 : 0); // -1 is the payload
-
-            if (CurrentGameMode() == GameMode.Push) // push's real objective position is the second objective for some reason
-                o = 1;
-
+            Number o! = objectiveNext + objectiveOffset;
             Teleport(player, NearestWalkablePos(o == -1 ? PayloadPosition() : ObjectivePosition(o)));
-            objectiveNext = (objectiveNext + 1) % (objectiveCount + (hasPayload ? 1 : 0));
+            objectiveNext = (objectiveNext + 1) % objectiveCount;
             break;
     }
 }

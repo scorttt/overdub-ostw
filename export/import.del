@@ -251,8 +251,8 @@ if (IsAlive())
         }
         impFA = [0, 0, 0];
         impVA = [Vector(0, 0, 0), Vector(0, 0, 0), Vector(0, 0, 0)];
-        for (Number c! = 0; c < 3; c++)
-            ImpKey(c);
+        for (tickI = 0; tickI < 3; tickI++)
+            ImpKey(tickI);
 
         // same levels and take slots as recording, the slots go into the track's storage
         Number n! = trackFrames[t];
@@ -260,24 +260,25 @@ if (IsAlive())
         
         for (Number s! = 0; s < n; s++)
         {
-            for (Number c! = 0; c < 3; c++)
+            for (tickI = 0; tickI < 3; tickI++)
             {
-                if (s == impFB[c])
+                if (s == impFB[tickI])
                 {
-                    impFA[c] = s;
-                    impVA[c] = impVB[c];
-                    if (c == Chan.Steps)
+                    impFA[tickI] = s;
+                    impVA[tickI] = impVB[tickI];
+                    if (tickI == Chan.Steps)
                         impHpA = impHpB;
                     if (s < n - 1)
-                        ImpKey(c);
+                        ImpKey(tickI);
                 }
             }
-            Number u! = (s - impFA[Chan.Pos]) / (impFB[Chan.Pos] - impFA[Chan.Pos]);    // 0 / 0 on the last frame is 0
-            Vector p! = impVA[Chan.Pos] + (impVB[Chan.Pos] - impVA[Chan.Pos]) * u;
-            u = (s - impFA[Chan.Look]) / (impFB[Chan.Look] - impFA[Chan.Look]);
-            Vector look! = impVA[Chan.Look] + (impVB[Chan.Look] - impVA[Chan.Look]) * u;
+            // the frame's position and facing, lerped between keys
+            tickJ = (s - impFA[Chan.Pos]) / (impFB[Chan.Pos] - impFA[Chan.Pos]);    // 0 / 0 on the last frame is 0
+            readPos = impVA[Chan.Pos] + (impVB[Chan.Pos] - impVA[Chan.Pos]) * tickJ;
+            tickJ = (s - impFA[Chan.Look]) / (impFB[Chan.Look] - impFA[Chan.Look]);
+            readLook = impVA[Chan.Look] + (impVB[Chan.Look] - impVA[Chan.Look]) * tickJ;
 
-            recBuf += {Pos: p, Look: Vector(Wrap(look.X), look.Y, impHpA), Ctrl: impVA[Chan.Steps]};
+            recBuf += {Pos: readPos, Look: Vector(Wrap(readLook.X), readLook.Y, impHpA), Ctrl: impVA[Chan.Steps]};
             RecLevelsUp();
 
             // the stored tracks spike the load every few seconds, more as they grow. the import doesnt add to a spike
@@ -305,7 +306,7 @@ if (IsAlive())
     importData = [];
     impS = []; // the trees the cursors were in
 
-    // a bot spawn costs ~105 load, so one per second, each when the load is down. the progress stays up until the last one
+    // bot spawns cause a load spike, so one per second, each when the load is down. the progress stays up until the last one
     Number bots! = TrackCount();    // tracks read, fewer than count if the limit stopped the import
     Number spawned! = 0;
     for (Number t! = 0; t < MAX_TRACKS; t++)

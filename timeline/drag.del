@@ -25,7 +25,7 @@ if (handleTip != Drag.None || (Abs(hoverX) < TRACK_HALF && IsInRange(hoverY, SEE
 rule: "drag"
 Event.OngoingPlayer
 if (IsPrimaryHeld())
-if (dragTarget != Drag.None)
+if (IsDragging(player))
 {
     tickK = -1; // frame the drag snaps to
 
@@ -50,21 +50,18 @@ if (dragTarget != Drag.None)
         }
     }
 
+    // a handle snapping past the other one follows the cursor instead
+    if (tickK == -1 || (dragTarget == Drag.LHandle && tickK > trimEnd) || (dragTarget == Drag.RHandle && tickK < trimStart))
+        tickK = TrackXToFrame(hoverX, player);
+
     switch (dragTarget)
     {
         case Drag.Seeker:
-            if (tickK != -1)
-                currFrame = Clamp(tickK, trimStart, trimEnd);
-            else
-                currFrame = Clamp(TrackXToFrame(hoverX, player), trimStart, trimEnd);
-
+            currFrame = Clamp(tickK, trimStart, trimEnd);
             break;
 
         case Drag.LHandle:
-            if (tickK != -1 && tickK <= trimEnd)
-                trimStart = tickK;
-            else
-                trimStart = Clamp(TrackXToFrame(hoverX, player), 0, trimEnd);
+            trimStart = Clamp(tickK, 0, trimEnd);
 
             if (currFrame < trimStart)
             {
@@ -75,10 +72,7 @@ if (dragTarget != Drag.None)
             break;
 
         case Drag.RHandle:
-            if (tickK != -1 && tickK >= trimStart)
-                trimEnd = Min(tickK, timelineFrames);
-            else
-                trimEnd = Clamp(TrackXToFrame(hoverX, player), trimStart, timelineFrames);
+            trimEnd = Clamp(tickK, trimStart, timelineFrames);
 
             if (currFrame > trimEnd)
             {

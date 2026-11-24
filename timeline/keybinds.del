@@ -41,22 +41,15 @@ if (IsPrimaryHeld() || IsJumpHeld() || IsUltimateHeld() || IsAbility2Held())
 
     else if (IsJumpHeld())
     {
-        if (recording)
-        {
-            async! ActivateCtrl(Ctrl.Record);
-        }
-        else if (playbackActive && IsCrouchHeld())
-        {
-            async! ActivateCtrl(Ctrl.Stop);
-        }
-        else if (ShowsPause())
-        {
-            async! ActivateCtrl(Ctrl.Pause);
-        }
-        else // stopped, or firstPerson paused by the timeline (Play closes it)
-        {
-            async! ActivateCtrl(Ctrl.Play);
-        }
+        // Play when stopped, or when firstPerson is paused by the timeline (Play closes it)
+        async! ActivateCtrl(
+            recording 
+            ? Ctrl.Record 
+            : playbackActive && IsCrouchHeld() 
+                ? Ctrl.Stop 
+                : ShowsPause() 
+                    ? Ctrl.Pause 
+                    : Ctrl.Play);
     }
     else if (IsUltimateHeld())
     {

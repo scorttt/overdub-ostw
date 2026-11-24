@@ -16,7 +16,7 @@ playervar Number playLoopShift!;
 Number LOOP_LEAD: CORRECT_LEAD + 2;
 
 // bots lead into the start before the wrap, so the playhead doesn't wait there
-Boolean SeamlessLoop(): CanLoop() && trimEnd - trimStart > LOOP_LEAD * 2 && !firstPerson;
+Boolean SeamlessLoop(): loopPlayback && trimEnd - trimStart > LOOP_LEAD * 2 && !firstPerson;
 
 // frames come from the time like recording does, a tick skipped under load moves the playhead on by more than 1
 // clock is set once and not added to every tick, the rounding of each add made the playhead stall or jump a frame
@@ -90,7 +90,7 @@ void SampleState(Number t!, Number f!) playervar "playback - sample state"
     snapState = readCtrl.Y % Bit.Ground >= Bit.UsingAb1 ? Snap.Busy : Snap.Idle; // any ability in use
 }
 
-// snapState is busy if a track that isnt ignored has an ability in use at f, otherwise None
+// snapState is busy if a track that isnt ignored has an ability in use at f
 void CheckTracksBusy(Number f!) playervar "playback - check busy tracks"
 {
     snapState = Snap.None;
@@ -99,10 +99,6 @@ void CheckTracksBusy(Number f!) playervar "playback - check busy tracks"
         if (!snapIgnore[t])
             SampleState(t, f);
     }
-        
-
-    if (snapState == Snap.Idle)
-        snapState = Snap.None;
 }
 
 rule: "play start snap"
@@ -147,11 +143,11 @@ if (playMode == PlayMode.Starting)
     }
 
     // only snap to a frame without any ability use, otherwise play from the chosen frame
-    if (playMode == PlayMode.Starting && currFrame == chosen && f != chosen && snapState == Snap.None)
+    if (playMode == PlayMode.Starting && currFrame == chosen && f != chosen && snapState != Snap.Busy)
     {
         CheckTracksBusy(Max(trimStart, f - SNAP_MARGIN));
 
-        if (snapState == Snap.None)
+        if (snapState != Snap.Busy)
             f = Max(trimStart, f - SNAP_MARGIN);
 
         currFrame = f;

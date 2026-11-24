@@ -53,7 +53,7 @@ void LayoutOptions() playervar "opt - layout"
 playervar String[] optLabels;
 playervar Boolean optLabelsFresh; // set false wherever an option, or which group is expanded, changes
 
-// the labels are built here, a formatted string in a text takes seconds to show (tests/text-test.del).
+// the labels are built here, a formatted string in a text takes seconds to show.
 // a slider's label changes every tick while dragged, it keeps its formatted string
 rule: "option labels"
 Event.OngoingPlayer
@@ -167,12 +167,9 @@ if (timelineOpen)
     WaitUntil(!timelineOpen, 99999);
 
     DestroyTexts(optTexts);
-    
-    for (Number i! = 0; i < optBars.Length; i++)
-        DestroyProgressBarInWorldText(optBars[i]);
 
-    optTexts = [];
-    optBars = [];
+    for (tickI = 0; tickI < optBars.Length; tickI++)
+        DestroyProgressBarInWorldText(optBars[tickI]);
 
     LoopIfConditionIsTrue();
 }

@@ -26,7 +26,7 @@ playervar Number trackLabelsConfirm!;
 // a hovered or confirmed id as the Hide/Delete strings show it, hovering anything else doesnt rebuild them
 Number ActionHit(Number id): IsInRange(id, HIT_HIDE, HIT_DELETE + MAX_TRACKS - 1) ? id : Ctrl.None;
 
-// the row labels are built here, a formatted string in a text takes seconds to show (tests/text-test.del).
+// the row labels are built here, a formatted string in a text takes seconds to show.
 // the Hide/Delete strings also follow the hover and confirmation while the menu is open. the loops count with the
 // plain tickI, there's no wait before the end
 rule: "track menu labels"
@@ -169,7 +169,6 @@ if (timelineOpen)
     WaitUntil(!timelineOpen, 99999);
 
     DestroyTexts(trackMenuTexts);
-    trackMenuTexts = [];
     LoopIfConditionIsTrue();
 }
 

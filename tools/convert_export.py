@@ -1,5 +1,5 @@
 # Converts an Overdub export in an older format (1.0.3 and older, or the first packed format) to the current one (Packed2),
-# the same steps as converter/main.del, to check what the converter logs in game:
+# the same steps as the converter mode (overdub-converter-ostw), to check what the converter logs in game:
 #   python tools/convert_export.py old.txt new.txt [--check ingame.txt]
 # --check compares the stream of an export the converter logged in game with this one's, char for char.
 
@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gen_import as G
-from gen_import import TABLE, IDX, TREE_CHARS, HEALTH_FLAG, SHORT_KEYS, ABS_KEYS, CURVE_GAP_MAX, STEP_FULL, look_key, step_key
+from gen_import import TABLE, IDX, TREE_CHARS, HEALTH_FLAG, SHORT_KEYS, ABS_KEYS, CURVE_GAP_MAX, STEP_FULL, look_key, pos_key, step_key
 
 NOT_OLD = "not an export from an older Overdub version"
 
@@ -66,13 +66,10 @@ class Converter:
             done += gap
             st = [(2 * d[i] * done + g) // (2 * g) - total[i] for i in range(3)]
             total = [total[i] + st[i] for i in range(3)]
-            z = st[2] + 512; x = st[0] + 512
             if c == 1:
                 self.look(gap, st)
-            elif gap <= 8 and 0 <= z < 1024 and 0 <= x < 1024:
-                self.put([(gap - 1) * 256 + z // 4, z % 4 * 1024 + x, st[1] + 2048], 1)
             else:
-                self.put([gap + SHORT_KEYS, st[0] + 2048, st[1] + 2048, st[2] + 2048], 1)
+                self.put(pos_key(gap, st), 1)
 
     def curve(self, c, n):
         f = -1

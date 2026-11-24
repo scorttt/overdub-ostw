@@ -48,7 +48,7 @@ playervar Sample[] botChunkA;      // chunk botWinC of the track
 playervar Vector[] botNextPos;     // the first correctLead positions of chunk botWinC + 1
 playervar Vector[] botNextLook;
 playervar Number[] botNextBtn;     // the first CORRECT_LEAD + 1 Ctrl.Y
-playervar Number botWinC!;         // chunk in botChunkA, -2 before the first load
+playervar Number botWinC;         // chunk in botChunkA, -2 before the first load
 
 // StartForcingPlayerPosition() and StartFacing() show ~6-7 ticks late, both are read this far ahead
 Number CORRECT_LEAD: 7;
@@ -226,15 +226,17 @@ playervar Number playKey!;
 rule: "playback key"
 Event.OngoingPlayer
 if (!IsDummyBot())
-if (playKey != PlayKeyNow())
 {
-    playKey = PlayKeyNow();
+    tickI = PlayKeyNow();
+    if (playKey != tickI)
+    {
+        playKey = tickI;
 
-    if (All().IsTrueForAny(p => p.playMode == PlayMode.Play || p.recording))
-        EnableKillFeed(All());
-    else
-        DisableKillFeed(All());
-
+        if (All().IsTrueForAny(p => p.playMode == PlayMode.Play || p.recording))
+            EnableKillFeed(All());
+        else
+            DisableKillFeed(All());
+    }
     MinWait();
     LoopIfConditionIsTrue();
 }
@@ -537,10 +539,12 @@ if (EntityExists(botOwner))
 
                 botBtn = readPos.Y;
 
+                tickI = BotLeadS(tickK);
+
                 // a bot acts from where it's forced to, ahead of what it shows, so its buttons (and in-use bits, for the retap below) are read ahead too, also while leading in
                 if (IsDummyBot())
                 {
-                    tickJ = BotLeadS(tickK) - 1; // -1 further than that before the track, nothing is there
+                    tickJ = tickI - 1; // -1 further than that before the track, nothing is there
                     tickJ = tickJ < 0 ? 0 : BotBtnAt(tickJ);
                     botBtn += BotLedBits(tickJ) - BotLedBits(botBtn);
                 }
@@ -552,15 +556,11 @@ if (EntityExists(botOwner))
                     break;
                 }
 
-                if (botBtn % Bit.UsingAb1 != botButtons)
-                    SetBotButtons();
-
                 readLook = BotLook();
                 tickJ = readLook.Z > 0 ? readLook.Z : MaxHealth(); // recorded health
 
                 // bot faces its lead sample like position does, the human's camera turn isnt measured
                 // throttle leads by THROTTLE_LEAD while in the window's chunk
-                tickI = BotLeadS(tickK);
                 if (Floor(tickI / CHUNK_SIZE) == botWinC)
                 {
                     botForcePos = botChunkA[tickI % CHUNK_SIZE].Pos;
@@ -578,6 +578,9 @@ if (EntityExists(botOwner))
                 }
                 botFacing = LookDir(readLook);
                 botThrottle = Vector(readPos.X, 0, readPos.Z);
+
+                if (botBtn % Bit.UsingAb1 != botButtons)
+                    SetBotButtons(); // loops with tickI, so after the reads above
 
                 if (!botLive && Health() != tickJ)
                     SetPlayerHealth(player, tickJ);

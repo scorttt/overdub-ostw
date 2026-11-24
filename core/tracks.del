@@ -80,14 +80,5 @@ void DeleteTrack(Number t!) playervar "track - delete track"
 void DeleteAllTracks() playervar "track - delete all tracks"
 {
     for (Number t! = 0; t < MAX_TRACKS; t++)
-    {
-        DestroyTrackBot(t);
-        ClearTrack(t);
-    }
-
-    trackStart = [];
-    trackFrames = [];
-    trackFlags = [];
-    trackHidden = [];
-    DeleteTrack(focusedTrack);
+        DeleteTrack(t);
 }

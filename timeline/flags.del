@@ -38,7 +38,6 @@ if (timelineOpen || closing)
     WaitUntil(flags.Length != count || !(timelineOpen || closing), 99999);
 
     DestroyTexts(flagMarkerTexts);
-    flagMarkerTexts = [];
     LoopIfConditionIsTrue();
 }
 
