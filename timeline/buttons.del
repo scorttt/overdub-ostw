@@ -248,9 +248,9 @@ void ActivateCtrl(Number | Ctrl ctrl) playervar "tl - selection handler"
                 break;
             }
 
-            framesToSkip = tickJ == ctrl ? Min(framesToSkip * 2, 32) : 2;
+            framesToSkip = tickJ == ctrl ? Min(framesToSkip * 2, 16) : 2;
 
-            if (currFrame != (ctrl == Ctrl.Forward ? trimEnd : trimStart))
+            if (currFrame != (ctrl == Ctrl.Forward ? trimEnd : trimStart) || CanLoop())
             {
                 playbackActive = true;
                 playMode = ctrl;

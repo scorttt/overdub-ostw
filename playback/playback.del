@@ -48,11 +48,12 @@ Event.OngoingPlayer
 if (playMode >= PlayMode.Play)
 if (playMode == PlayMode.Rewind ? currFrame <= trimStart : currFrame >= trimEnd)
 {
-    if (playMode == PlayMode.Play && CanLoop())
+    // rewind loops to the end, play and fast forward to the start
+    if (CanLoop())
     {
         // otherwise the playhead waits CORRECT_LEAD ticks while the bots lead in
         tickI = SeamlessLoop() ? 0 : CORRECT_LEAD;
-        currFrame = trimStart;
+        currFrame = playMode == PlayMode.Rewind ? trimEnd : trimStart;
         playLoopShift = 0;
         playClock = Time() - (trimStart - tickI) * delta; // "play" moves on from here
         playClockFrame = trimStart - tickI;
