@@ -231,8 +231,7 @@ if (IsAlive())
         ioStatus = <"Track <0> <1>: decoding <2> frames", t + 1, trackHero[t], trackFrames[t]>;
 
         ImpAt(Chan.Header, 1, 1);
-        ImpAt(Chan.Header, impV[0], 2);
-        StoreTrackFlags(t, impV);
+        impCur[Chan.Header] += impV[0] * 2; // an older export's flags, skipped
 
         // the 3 channels start with a key on frame 0, the frame loop moves each on when it reaches its next key. the
         // first position key is absolute: 2048 in an old export (1.0.3 and older), ABS_KEYS in a newer one. the first

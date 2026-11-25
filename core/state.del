@@ -23,7 +23,6 @@ playervar Number recFrames; // amount of frames in the focused track
 playervar Number trimStart;
 playervar Number trimEnd;
 playervar Number currFrame;
-playervar Number[] flags;
 
 Boolean HasRecording(Player p = player): p.recFrames > 0; // focused track has frames
 Boolean TimelineHasFrames(Player p = local): p.timelineFrames > 0;
@@ -41,7 +40,6 @@ playervar Number tickK;
 
 void InitStatePlayer()
 {
-    flags = [];
     loopPlayback = true;
 }
 

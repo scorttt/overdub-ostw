@@ -40,9 +40,8 @@ if (timelineOpen)
     }
 
     hoverHit = Ctrl.None;
-    tickK = -1; // hovered flag
 
-    ctrlEnabled = CtrlEnabledNow().Map((on, i) => on && (!recording || i == Ctrl.Record || i == Ctrl.AddFlag));
+    ctrlEnabled = CtrlEnabledNow().Map((on, i) => on && (!recording || i == Ctrl.Record));
 
     // a playhead past the track's end retakes from its last frame
     tickJ = RetakeKeepsFrames() && RetakeInTrim() && RetakeHeroMatches();
@@ -62,17 +61,6 @@ if (timelineOpen)
                     hoverHit = tickI;
                     break;
                 }
-            }
-        }
-    }
-    else if (!IsDragging(player) && IsInRange(hoverY, UI_FLAGS_Y, UI_FLAGS_Y + 0.10))
-    {
-        for (tickI = 0; tickI < flags.Length; tickI++)
-        {
-            if (Abs(FrameToTrackX(flags[tickI], player) - hoverX) < 0.015)
-            {
-                tickK = tickI;
-                break;
             }
         }
     }
@@ -122,8 +110,6 @@ if (timelineOpen)
 
     if (hovered != hoverHit)
         hovered = hoverHit;
-    if (hoverFlagIndex != tickK)
-        hoverFlagIndex = tickK;
 
     // tooltip for the hovered button, the record tooltip stays while recording
     tipCtrl = hoverHit != Ctrl.None && hoverHit < HIT_TRACK ? hoverHit : recording ? Ctrl.Record : Ctrl.None;
@@ -153,7 +139,6 @@ if (timelineOpen)
     LoopIfConditionIsTrue();
 
     hovered = Ctrl.None;
-    hoverFlagIndex = -1;
     tipCtrl = Ctrl.None;
     handleTip = Drag.None;
     confirmId = Ctrl.None;

@@ -112,7 +112,7 @@ if (Abs(ThrottleX()) > 0.5)
     LoopIfConditionIsTrue();
 }
 
-rule: "flag jump keybind"
+rule: "trim jump keybind"
 Event.OngoingPlayer
 if (canUseKeybinds)
 if (!animating)
@@ -121,16 +121,8 @@ if (!IsDragging(player))
 if (IsAbility1Held())
 if (Abs(ThrottleX()) > 0.5)
 {
-    Number[] targets! = ThrottleX() < 0
-        ? SortedArray(flags.Filter(f => f > currFrame && f <= trimEnd), Curr())    // right ascending
-        : SortedArray(flags.Filter(f => f < currFrame && f >= trimStart), -Curr()); // left descending
-
     StopForSeek();
-
-    if (targets.Length > 0)
-        currFrame = targets.First;
-    else
-        currFrame = ThrottleX() > 0 ? trimStart : trimEnd;
+    currFrame = ThrottleX() > 0 ? trimStart : trimEnd;
 
     WaitUntil(Abs(ThrottleX()) < 0.5 || !IsAbility1Held(), 99999);
 }

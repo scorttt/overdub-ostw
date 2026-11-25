@@ -1,5 +1,7 @@
 import "../main.del";
 
+Number SNAP_DIST: 0.0175;
+
 rule: "grab"
 Event.OngoingPlayer
 if (canUseKeybinds)
@@ -28,15 +30,6 @@ if (IsPrimaryHeld())
 if (IsDragging(player))
 {
     tickK = -1; // frame the drag snaps to
-
-    for (tickI = 0; tickI < flags.Length; tickI++)
-    {
-        if (Abs(FrameToTrackX(flags[tickI], player) - hoverX) < SNAP_DIST)
-        {
-            tickK = flags[tickI];
-            break;
-        }
-    }
 
     if (tickK == -1)
     {

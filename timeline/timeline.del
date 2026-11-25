@@ -9,9 +9,7 @@ enum Ui
     Handles,
     HandleTime,
     FrameMult,
-    Flags,
     TimeElapsed,
-    FlagCount,
     TrackEnds
 }
 
@@ -26,8 +24,7 @@ enum Drag
 enum Cursor 
 { 
     Default, 
-    Drag,
-    FlagHover 
+    Drag
 }
 
 Number TRACK_HALF:  2.60; // timeline track spans -TRACK_HALF to TRACK_HALF on the menu x axis
@@ -62,7 +59,6 @@ playervar Boolean closing;
 
 playervar Number dragTarget;
 
-playervar Number hoverFlagIndex;
 playervar Number objectiveNext!; // objective the objective button teleports to
 
 globalvar Number objectiveCount!;  // positions in the objective button's cycle
@@ -88,7 +84,7 @@ Color RedPulse():
 
 Number CursorX(Player p = local): AngleDifference(HorizontalAngleFromDirection(Facing(p)), p.facingX);
 Number CursorY(Player p = local): AngleDifference(VerticalAngleFromDirection(Facing(p)), p.facingY);
-Any CursorState(Player p = local): IsDragging(p) ? Cursor.Drag : p.hoverFlagIndex != -1 ? Cursor.FlagHover : Cursor.Default;
+Any CursorState(Player p = local): IsDragging(p) ? Cursor.Drag : Cursor.Default;
 
 Any RenderPosOf(Number x = 0, Number y = 0):
     EyePos(local) + local.orbitUi + 100 * (
@@ -139,14 +135,12 @@ rule: "init unsanitized text"
 
 void InitTimelinePlayer()
 {
-    hoverFlagIndex = -1;
     hovered = Ctrl.None;
     confirmId = Ctrl.None;
     tipCtrl = Ctrl.None;
 }
 
 // y of each Ui item while the timeline is open. the ones read on their own have a name
-Number UI_FLAGS_Y:        -0.9575;
 Number UI_TIME_ELAPSED_Y: -1.200;
 Number UI_TRACK_ENDS_Y:   -1.085; // the last one, the open animation stops once its there
 Number[] TIMELINE_UI_Y_POS:
@@ -157,9 +151,7 @@ Number[] TIMELINE_UI_Y_POS:
     -0.800,             // Handles
     -0.725,             // HandleTime
     -1.1425,            // FrameMult
-    UI_FLAGS_Y,         // Flags
     UI_TIME_ELAPSED_Y,  // TimeElapsed
-    -1.200,             // FlagCount
     UI_TRACK_ENDS_Y     // TrackEnds
 ];
 
@@ -169,16 +161,6 @@ rule: "create timeline text"
         VisibleTo:      TimelineVisible() ? local : null,
         Header:         <"<0>", local.currFrame>,
         Position:       UiPos((CTRL_X[Ctrl.PrevFrame] + CTRL_X[Ctrl.NextFrame]) / 2, Ui.CurrFrame),
-        Scale:          1,
-        TextColor:      Color.White,
-        Reevaluation:   InworldTextRev.VisibleToPositionAndString,
-        Clipping:       Clipping.DoNotClip,
-        Spectators:     Spectators.VisibleNever);
-
-    CreateInWorldText(
-        VisibleTo:      TimelineVisible() ? local : null,
-        Header:         <"<0>/<1>", local.flags.Length, MAX_FLAGS>,
-        Position:       UiPos(CTRL_X[Ctrl.AddFlag], Ui.FlagCount),
         Scale:          1,
         TextColor:      Color.White,
         Reevaluation:   InworldTextRev.VisibleToPositionAndString,
@@ -254,11 +236,11 @@ rule: "create timeline text"
 
     CreateInWorldText(
         VisibleTo:      local.timelineOpen ? local : null,
-        Header:         ["{0}TX {1}>".Format([txCharacter, "C0000000002DD21"]), "↔", "⊙"][CursorState()],
+        Header:         ["{0}TX {1}>".Format([txCharacter, "C0000000002DD21"]), "↔"][CursorState()],
         Position:       Update(local.timelineOpen
                             ? RenderPosOf(
-                                (local.camTurnEnd != 0 ? local.hoverX : CursorX()) + [ 0.07,  0,    0][CursorState()],
-                                (local.camTurnEnd != 0 ? local.hoverY : CursorY()) + [-0.14, -0.07, -0.07][CursorState()])
+                                (local.camTurnEnd != 0 ? local.hoverX : CursorX()) + [ 0.07,  0   ][CursorState()],
+                                (local.camTurnEnd != 0 ? local.hoverY : CursorY()) + [-0.14, -0.07][CursorState()])
                             : null),
         TextColor:      Color.White,
         Scale:          2,

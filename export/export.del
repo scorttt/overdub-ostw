@@ -19,7 +19,7 @@ import "../main.del";
 // a track is written as keys instead of every frame. values are
 // written in groups of the same width (ExpPut / ImpAt), stream:
 //   focused trackCount (1 char each), trimStart trimEnd (2), then per track:
-//   track hero team (1), start frames (2), flagCount (1), flags (2), then the tracks 3 channels one after another:
+//   track hero team (1), start frames (2), flagCount (1, always 0 now), flags (2), then the tracks 3 channels one after another:
 //   position and facing: curves within POS_TOL / ANG_TOL, interpolated linearly between keys on import. a key holds the
 //     frames since the last key (its gap) and its value as deltas from the last key in POS_STEP / POS_STEP_Y / ANG_STEP
 //     steps, or as absolute values. its first char tells which of 3 kinds it is:
@@ -217,7 +217,6 @@ void ExportTracks() playervar "export - export"
 {
     Number expHudProg!;
     StopAll();
-    StoreTrackFlags(focusedTrack, flags);
     Number[] ids! = TRACK_IDS.Filter(t => trackFrames[t] > 0);
     if (ids.Length == 0)
     {
@@ -294,14 +293,9 @@ void ExportTracks() playervar "export - export"
     for (Number k! = 0; k < ids.Length; k++)
     {
         Number t = ids[k];
-        ioStatus = <"Track <0> <1>: flags", t + 1, trackHero[t]>;
-
         ExpPut([t, AllHeroes().IndexOf(trackHero[t]), trackTeam[t]], 1);
         ExpPut([trackStart[t], trackFrames[t]], 2);
-
-        Number[] flagList! = TrackFlagList(t);
-        ExpPut([flagList.Length], 1);
-        ExpPut(flagList, 2);
+        ExpPut([0], 1); // flagCount, flags were removed
 
         // the tracks samples, staged once (recording is blocked while exporting, nothing else uses recTake then)
         LoadTrackStage(t);

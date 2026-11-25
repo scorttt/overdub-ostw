@@ -12,13 +12,11 @@ An Overwatch workshop mode built on [OSTW](https://github.com/ItsDeltin/Overwatc
         - Fast Forward/Rewind (Shift + Q / Shift + E), press again to go faster
         - Scrub frame by frame (hold Q / E to repeat)
         - Scrub in steps (A / D, each step is 1/20 of the timeline)
+        - Jump to the trim start/end (Shift + A / D)
         - Loop playback between trim markers
-        - Flags
-            - Similar to how osu! handles flags with their editor, flag specific frames with Melee (up to 8 per track) and quickly jump around them in a recording with Shift + A/D
-            - Click a flag to jump to it, Melee or Secondary Fire on a flag removes it, Shift + Melee on a flag or the flag button removes all flags
         - Change Hero
     - Trimming (drag the handles)
-    - Scrubbing (drag the seeker), handles and seeker snap to flags and track ends
+    - Scrubbing (drag the seeker), handles and seeker snap to track ends
     - Teleport to the focused track (Go To Track) or cycle teleport between each objective (Go to Objective)
     - Up to 12 tracks, switched with the track buttons or the Track menu
         - Each track in the menu has a Hide/Show button, team toggle, and a delete button
@@ -62,7 +60,7 @@ An Overwatch workshop mode built on [OSTW](https://github.com/ItsDeltin/Overwatc
 Before doing anything, ensure that `Enable Workshop Inspector` and `Enable Workshop Inspector Log File` settings are turned **ON** in `Options > Gameplay > General`, they are turned off by default
 
 ### Exporting
-1. Open the options menu in Overdub, click on the "Export recording to Inspector" button, then "Export" on the confirmation screen (it lists these steps too). Exports are not automatic, and must be done manually. All tracks are exported (hidden ones too) with their flags, bot teams and trim markers. The timeline and recording are locked until the export finishes, its progress is shown at the top of the screen.
+1. Open the options menu in Overdub, click on the "Export recording to Inspector" button, then "Export" on the confirmation screen (it lists these steps too). Exports are not automatic, and must be done manually. All tracks are exported (hidden ones too) with their bot teams and trim markers. The timeline and recording are locked until the export finishes, its progress is shown at the top of the screen.
 2. After export, open the Workshop Inspector by pressing Esc > `Open Workshop Inspector` > "`Copy to clipboard all log`" button (second button from the left) to copy the generated code to your clipboard 
 3. Paste the contents into a text editor
 4. Remove the **very first timestamp** (looks like `[01:23:45]`) so that the code is pastable

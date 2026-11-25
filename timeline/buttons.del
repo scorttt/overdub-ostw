@@ -13,15 +13,14 @@ enum Ctrl
     Options = 7,
     Record = 8,
     Track = 9,
-    AddFlag = 10,
-    DeleteTrack = 11,
-    ChangeHero = 12,
-    Team = 13,
-    Loop = 14,
-    GoTo = 15,
-    Objective = 16,
-    PrevTrack = 17,
-    NextTrack = 18,
+    DeleteTrack = 10,
+    ChangeHero = 11,
+    Team = 12,
+    Loop = 13,
+    GoTo = 14,
+    Objective = 15,
+    PrevTrack = 16,
+    NextTrack = 17,
     None = -1
 }
 
@@ -45,7 +44,7 @@ Boolean IsHovered(Number | Ctrl id): local.hovered == id;
 // the play button is Pause, but not while firstPerson is paused by the timeline (Play resumes it then)
 Boolean ShowsPause(Player p = player): p.playbackActive && p.firstPersonPaused == PlayMode.None;
 
-// which buttons can be clicked, by Ctrl. cursor hover sets ctrlEnabled from it every tick, while recording only Record and AddFlag stay
+// which buttons can be clicked, by Ctrl. cursor hover sets ctrlEnabled from it every tick, while recording only Record stays
 Boolean[] CtrlEnabledNow():
     [
         (!playbackActive && CanPlay()) || firstPersonPaused != PlayMode.None,                       // Play
@@ -58,7 +57,6 @@ Boolean[] CtrlEnabledNow():
         true,                                                                                       // Options
         true,                                                                                       // Record
         true,                                                                                       // Track
-        (recording || HasRecording()) && (flags.Contains(currFrame) || flags.Length < MAX_FLAGS),   // AddFlag
         HasRecording(),                                                                             // DeleteTrack
         !recordArmed && !firstPerson,                                                               // ChangeHero
         true,                                                                                       // Team
@@ -80,12 +78,12 @@ Color ButtonColor(Number | Ctrl id, Boolean active = false):
 // button positions and hitboxes by Ctrl, and the texts of buttons with a fixed label. arrays, a call per button costs more elements
 rule: "init buttons"
 {
-    //                  Play    Pause   Stop    Rewind  Forward  PrevFrame  NextFrame  Options    Record  Track   AddFlag  DeleteTrack  ChangeHero     Team    Loop    GoTo           Objective          PrevTrack  NextTrack
-    CTRL_X =           [-2.380, -2.385, -2.250, -2.125, -2.000,  -1.900,    -1.800,    2.350,     -2.520, 2.350,  -1.700,  -1.590,      1.750,         1.120,  -1.475, 1.750,         1.120,             2.120,     2.580];
-    CTRL_Y =           [-1.150, -1.150, -1.150, -1.150, -1.150,  -1.150,    -1.150,    -1.275,    -1.150, -1.150, -1.160,  -1.160,      -1.275,        -1.275, -1.160, -1.150,        -1.150,            -1.150,    -1.150];
-    CTRL_HALF_W =      [0.0625, 0.0625, 0.0625, 0.0625, 0.05,    0.0575,    0.0425,    0.25,      0.075,  0.175,  0.0425,  0.0425,      0.3,           0.275,  0.05,   0.3,           0.3,               0.05,      0.05];
-    String[] labels! = ["",     "",     "■",    "«",    "»",     "‹",       "›",       "Options", "●",    "",     "",      "×",         "Change Hero", "",     "∞",    "Go To Track", "Go to Objective", "‹",       "›"];
-    Number[] scales! = [2,      2,      1.75,   2,      2,       2,         2,         1.5,       2,      2,      2,       2,           1.5,           2,      2,      1.5,           1.5,               2,         2];
+    //                  Play    Pause   Stop    Rewind  Forward  PrevFrame  NextFrame  Options    Record  Track   DeleteTrack  ChangeHero     Team    Loop    GoTo           Objective          PrevTrack  NextTrack
+    CTRL_X =           [-2.380, -2.385, -2.250, -2.125, -2.000,  -1.900,    -1.800,    2.350,     -2.520, 2.350,  -1.700,      1.750,         1.120,  -1.590, 1.750,         1.120,             2.120,     2.580];
+    CTRL_Y =           [-1.150, -1.150, -1.150, -1.150, -1.150,  -1.150,    -1.150,    -1.275,    -1.150, -1.150, -1.160,      -1.275,        -1.275, -1.160, -1.150,        -1.150,            -1.150,    -1.150];
+    CTRL_HALF_W =      [0.0625, 0.0625, 0.0625, 0.0625, 0.05,    0.0575,    0.0425,    0.25,      0.075,  0.175,  0.0425,      0.3,           0.275,  0.05,   0.3,           0.3,               0.05,      0.05];
+    String[] labels! = ["",     "",     "■",    "«",    "»",     "‹",       "›",       "Options", "●",    "",     "×",         "Change Hero", "",     "∞",    "Go To Track", "Go to Objective", "‹",       "›"];
+    Number[] scales! = [2,      2,      1.75,   2,      2,       2,         2,         1.5,       2,      2,      2,           1.5,           2,      2,      1.5,           1.5,               2,         2];
 
     for (Number k! = 0; k < labels.Length; k++)
         if (labels[k] != "")
@@ -135,11 +133,6 @@ rule: "create button texts"
                                          ? local.currFrame < local.recStart + local.recFrames ? "Retake from playhead" : "Retake from end of track"
                                          : <"<0> [Hold <1> + <2> x2]", HasRecording(local) ? "Replace Track" : "Start Recording", BindString(Button.Reload), BindString(Button.Interact)>,
                          "",                                                                                         // Track
-                         IsAbility1Held(local) && local.flags.Length > 0
-                             ? <"Remove All Flags [<0> + <1>]", BindString(Button.Ability1), BindString(Button.Melee)>
-                             : <"<0> Flag [<1>]", local.flags.Contains(local.currFrame)                              // AddFlag
-                                                     ? "Remove"
-                                                     : "Add", BindString(Button.Melee)>,
                          local.confirmId == Ctrl.DeleteTrack ? "Confirm Delete?" : "Delete Current Track",           // DeleteTrack
                          "",                                                                                         // ChangeHero
                          "",                                                                                         // Team
@@ -189,16 +182,6 @@ rule: "create button texts"
         Reevaluation:   InworldTextRev.VisibleToPositionStringAndColor,
         Clipping:       Clipping.DoNotClip,
         Spectators:     Spectators.VisibleNever);
-
-    CreateInWorldText(
-        VisibleTo:      TimelineVisible() ? local : null,
-        Header:         local.flags.Contains(local.currFrame) ? "−" : "+",
-        Position:       CtrlPos(Ctrl.AddFlag),
-        Scale:          2,
-        TextColor:      ButtonColor(Ctrl.AddFlag),
-        Reevaluation:   InworldTextRev.VisibleToPositionStringAndColor,
-        Clipping:       Clipping.DoNotClip,
-        Spectators:     Spectators.VisibleNever);
 }
 
 void StartPlayback() playervar "tl - start playback"
@@ -219,7 +202,7 @@ void StartPlayback() playervar "tl - start playback"
 
 void ActivateCtrl(Number | Ctrl ctrl) playervar "tl - selection handler"
 {
-    if (recording && ctrl != Ctrl.Record && ctrl != Ctrl.AddFlag)
+    if (recording && ctrl != Ctrl.Record)
         return;
 
     switch (ctrl)
@@ -267,9 +250,6 @@ void ActivateCtrl(Number | Ctrl ctrl) playervar "tl - selection handler"
 
             if (currFrame < trimEnd)
                 currFrame++;
-            break;
-        case Ctrl.AddFlag:
-            ToggleFlag();
             break;
         case Ctrl.Record:
             if (recording)

@@ -460,7 +460,6 @@ void StartRecording()
     if (punchFrame == WHOLE_TAKE)
     {
         ResetHeroConsumables();
-        flags = [];
         recStart = currFrame;
         recTrimEnd = HasRecording() && trimEnd < timelineFrames && trimEnd > recStart ? trimEnd : 0;
         BeginTake(focusedTrack);
@@ -468,7 +467,6 @@ void StartRecording()
     }
     else
     {
-        flags = flags.Filter(f => f < currFrame);
         recTrimEnd = trimEnd < timelineFrames && trimEnd > recStart ? trimEnd : 0;
         recFrames = currFrame - recStart;
         BeginPunch(focusedTrack, recFrames);
