@@ -21,12 +21,6 @@ enum Drag
     RHandle
 }
 
-enum Cursor 
-{ 
-    Default, 
-    Drag
-}
-
 Number TRACK_HALF:  2.60; // timeline track spans -TRACK_HALF to TRACK_HALF on the menu x axis
 Number TRACK_WIDTH: 2 * TRACK_HALF;
 Number TOOLTIP_Y:   -1.085;
@@ -84,7 +78,6 @@ Color RedPulse():
 
 Number CursorX(Player p = local): AngleDifference(HorizontalAngleFromDirection(Facing(p)), p.facingX);
 Number CursorY(Player p = local): AngleDifference(VerticalAngleFromDirection(Facing(p)), p.facingY);
-Any CursorState(Player p = local): IsDragging(p) ? Cursor.Drag : Cursor.Default;
 
 Any RenderPosOf(Number x = 0, Number y = 0):
     EyePos(local) + local.orbitUi + 100 * (
@@ -236,11 +229,11 @@ rule: "create timeline text"
 
     CreateInWorldText(
         VisibleTo:      local.timelineOpen ? local : null,
-        Header:         ["{0}TX {1}>".Format([txCharacter, "C0000000002DD21"]), "↔"][CursorState()],
+        Header:         IsDragging() ? "↔" : "{0}TX {1}>".Format([txCharacter, "C0000000002DD21"]),
         Position:       Update(local.timelineOpen
                             ? RenderPosOf(
-                                (local.camTurnEnd != 0 ? local.hoverX : CursorX()) + [ 0.07,  0   ][CursorState()],
-                                (local.camTurnEnd != 0 ? local.hoverY : CursorY()) + [-0.14, -0.07][CursorState()])
+                                (local.camTurnEnd != 0 ? local.hoverX : CursorX()) + (IsDragging() ? 0 : 0.07),
+                                (local.camTurnEnd != 0 ? local.hoverY : CursorY()) + (IsDragging() ? -0.07 : -0.14))
                             : null),
         TextColor:      Color.White,
         Scale:          2,
