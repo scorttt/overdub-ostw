@@ -114,6 +114,8 @@ void ToggleTrackHidden(Number t!) playervar "bot - toggle track hidden"
 void ToggleTrackTeam(Number t!) playervar "bot - toggle track team"
 {
     trackTeam[t] = 1 - trackTeam[t];
+    trackLabelsFresh = false;
+
     if (EntityExists(trackBot[t]))
         SpawnTrackBot(t);
 }
