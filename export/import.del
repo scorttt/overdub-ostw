@@ -226,7 +226,7 @@ if (IsAlive())
             SmallMessage(player, "Import stopped at the 10 minute limit, please don't merge imports");
             break;
         }
-        trackStart[t] = impV[0];
+        trackStart[t] = (impV[0] + START_NEG / 2) % START_NEG - START_NEG / 2; // unwraps a start before frame 0
         trackFrames[t] = impV[1];
         ioStatus = <"Track <0> <1>: decoding <2> frames", t + 1, trackHero[t], trackFrames[t]>;
 

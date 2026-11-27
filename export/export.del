@@ -294,7 +294,7 @@ void ExportTracks() playervar "export - export"
     {
         Number t = ids[k];
         ExpPut([t, AllHeroes().IndexOf(trackHero[t]), trackTeam[t]], 1);
-        ExpPut([trackStart[t], trackFrames[t]], 2);
+        ExpPut([(trackStart[t] + START_NEG) % START_NEG, trackFrames[t]], 2); // a start before frame 0 wraps to + START_NEG
         ExpPut([0], 1); // flagCount, flags were removed
 
         // the tracks samples, staged once (recording is blocked while exporting, nothing else uses recTake then)

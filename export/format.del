@@ -39,6 +39,7 @@ Number TINY_LOOK: 1024;         // Packed2 facing key's first char: below it a 1
 Number STEP_BUTTONS: 1024;      // Packed2 steps key's first char: below it throttle only (1 char), below STEP_FULL buttons
 Number STEP_FULL: 2048;         // only (2 chars), then a full key
 
+Number START_NEG: 8388608;      // a track start or flag before frame 0 (a slid track) is written + this, others never reach half of it
 Number DELTA_ZERO: 2048;
 Number THROTTLE_HALF: 2047.5;
 Number POS_SHORT_HALF: 512;

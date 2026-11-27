@@ -9,6 +9,7 @@ import sys
 from gen_char_table import char_table
 
 IMPORT_ARRAY = 15                       # trees per rule
+START_NEG = 8388608                     # a track start or flag before frame 0 (a slid track) is written + this
 TREE_CHARS = 1628; TREE_STRINGS = 13    # 4 outer strings of 119 chars, 9 inner of 128
 HEALTH_FLAG = 32768
 POS_STEP = 0.001; ANG_STEP = 0.01
@@ -388,6 +389,8 @@ def load_source(path):
     src = []
     for _ in range(count):
         t = v(1); hero = v(1); team = v(1); start = v(2); n = v(2)
+        if start >= START_NEG // 2:
+            start -= START_NEG
         fc = v(1)
         T = Track(t, hero, team, start, n, [v(2) for _ in range(fc)])
         hp = 0
@@ -578,7 +581,7 @@ class Encoder:
         directory = []
         for T in src:
             self.put([T.t, T.hero, T.team], 1)
-            self.put([T.start, T.n], 2)
+            self.put([T.start + START_NEG if T.start < 0 else T.start, T.n], 2)
             self.put([len(T.flags)], 1)
             self.put(T.flags, 2)
             self.curve(T, 0)
