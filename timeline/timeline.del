@@ -238,6 +238,8 @@ rule: "create timeline text"
 
     cursorText = -1;
     CreateCursor();
+    markerTexts = [];
+    markerTracks = [];
 }
 
 globalvar Number cursorText!;
@@ -279,8 +281,6 @@ if (cursorShown != CursorShownNow())
     LoopIfConditionIsTrue();
 }
 
-playervar Number[] trackMarkerTexts;
-
 void DestroyTexts(Number[] ids!) playervar "tl - destroy texts"
 {
     for (tickI = 0; tickI < ids.Length; tickI++)
@@ -288,35 +288,138 @@ void DestroyTexts(Number[] ids!) playervar "tl - destroy texts"
     ids = []; // a ! value, it would stay in the shared array
 }
 
-rule: "track end markers"
-Event.OngoingPlayer
-if (timelineOpen || closing)
-{
-    Number count! = TrackCount();
-    trackMarkerTexts = [];
+globalvar Color[] TRACK_COLORS! = [
+    CustomColor(255, 96, 96, 255),
+    CustomColor(255, 176, 96, 255),
+    CustomColor(255, 255, 96, 255),
+    CustomColor(176, 255, 96, 255),
+    CustomColor(96, 255, 96, 255),
+    CustomColor(96, 255, 176, 255),
+    CustomColor(96, 255, 255, 255),
+    CustomColor(96, 176, 255, 255),
+    CustomColor(96, 96, 255, 255),
+    CustomColor(176, 96, 255, 255),
+    CustomColor(255, 96, 255, 255),
+    CustomColor(255, 96, 176, 255)];
 
-    for (Number i! = 0; i < MAX_TRACKS; i++)
+globalvar Number[][] markerTexts!; // each track's label and bracket ids, while it's in markerTracks
+globalvar Number[] markerTracks!;
+playervar Number markerTop!; // CursorShownNow() when the focused track's marker was last put on top
+
+// track labels and their start (s = 0) and end (s = 1) brackets on the tl bar exist while it has frames and the tl is open or closing, hidden texts cost some client performance
+// starts before frame 0 shows at 0. the focused tracks are made again when the cursor is, over the other tracks, the previous ones go after
+rule: "track markers"
+Event.OngoingPlayer
+if (player == host)
+if (TRACK_IDS.IsTrueForAny(t => (trackFrames[t] > 0 && (timelineOpen || closing)) != markerTracks.Contains(t)) || markerTop != CursorShownNow())
+{
+    markerTop = CursorShownNow();
+    for (Number i! = 0; i < MAX_TRACKS; i++) // DestroyTexts counts with tickI
     {
-        if (TrackFrames(i, player) > 0)
+        if (trackFrames[i] > 0 && (timelineOpen || closing) && (!markerTracks.Contains(i) || (i == focusedTrack && timelineOpen)))
         {
+            Number[] ids! = [];
             CreateInWorldText(
-                VisibleTo:      player,
-                Header:         <"T<0>", Once(i) + 1>,
-                Position:       UiPos(FrameToTrackX(TrackEnd(Once(i))), Ui.TrackEnds),
+                VisibleTo:      TimelineVisible() && local.trackFrames[Once(i)] > 0 ? local : null,
+                Header:         <"T<0>", i + 1>,
+                Position:       UiPos(FrameToTrackX(TrackLabelFrame(Once(i))), Ui.TrackEnds),
                 Scale:          1,
                 TextColor:      local.focusedTrack == Once(i)
                                     ? Color.White
-                                    : CustomColor(255, 255, 255, 50),
+                                    : Once(TRACK_COLORS[i]),
                 Reevaluation:   InworldTextRev.VisibleToPositionAndColor,
                 Clipping:       Clipping.DoNotClip,
                 Spectators:     Spectators.VisibleNever);
-            trackMarkerTexts += LastTextID();
+            ids += LastTextID();
+
+            for (Number s! = 0; s < 2; s++)
+            {
+                CreateInWorldText(
+                    VisibleTo:      TimelineVisible() && local.trackFrames[Once(i)] > 0 ? local : null,
+                    Header:         "┃",
+                    Position:       UiPos(FrameToTrackX(Max(TrackStart(Once(i)) + Once(s) * TrackFrames(Once(i)), 0)), Ui.Seeker, 0.0080),
+                    Scale:          1.90,
+                    TextColor:      local.dragTarget == Drag.Track && local.slideTrack == Once(i)
+                                        ? OPT_HOVER_COLOR
+                                        : local.focusedTrack == Once(i)
+                                            ? Color.White
+                                            : Once(TRACK_COLORS[i]),
+                    Reevaluation:   InworldTextRev.VisibleToPositionAndColor,
+                    Clipping:       Clipping.DoNotClip,
+                    Spectators:     Spectators.VisibleNever);
+                ids += LastTextID();
+            }
+
+            if (markerTracks.Contains(i))
+                DestroyTexts(markerTexts[i]);
+            else
+                markerTracks += i;
+            markerTexts[i] = ids;
+        }
+        else if (markerTracks.Contains(i) && (trackFrames[i] == 0 || !(timelineOpen || closing)))
+        {
+            DestroyTexts(markerTexts[i]);
+            markerTracks -= i;
         }
     }
 
-    WaitUntil(TrackCount() != count || !(timelineOpen || closing), 99999);
+    MinWait();
+    LoopIfConditionIsTrue();
+}
 
-    DestroyTexts(trackMarkerTexts);
+// each track's start (t) and end (t + MAX_TRACKS) frame and timestamp, a start before frame 0 is 0
+playervar String[] trackTimes;
+playervar Number[] timeFrames!;
+playervar Number[] timeTexts!;
+playervar Number[] timeTracks!; // the tracks with frames when the timestamps were made
+
+rule: "track times"
+Event.OngoingPlayer
+if (timelineOpen)
+if (!recording)
+if (dragTarget != Drag.Track)
+if (TRACK_IDS.IsTrueForAny(t => Max(TrackStart(t, player), 0) != timeFrames[t] || TrackEnd(t, player) != timeFrames[t + MAX_TRACKS]))
+{
+    timeFrames = TRACK_IDS.Map(t => Max(TrackStart(t, player), 0)).Append(TRACK_IDS.Map(t => TrackEnd(t, player)));
+    trackTimes = timeFrames.Map(f => FormattedFrameToSec(f));
+    MinWait();
+    LoopIfConditionIsTrue();
+}
+
+rule: "track timestamps"
+Event.OngoingPlayer
+if (timelineOpen)
+{
+    timeTracks = TRACK_IDS.Filter(t => TrackFrames(t, player) > 0);
+    Number[] ids! = [];
+    
+    for (Number i! = 0; i < 2 * MAX_TRACKS; i++)
+    {
+        if (timeTracks.Contains(i % MAX_TRACKS))
+        {
+            CreateInWorldText(
+                VisibleTo:      !local.recording && (local.handleTip != Drag.Track || local.slideTrack != Once(i % MAX_TRACKS)) ? player : null,
+                Header:         local.trackTimes[Once(i)],
+                Position:       UiPos(FrameToTrackX(local.timeFrames[Once(i)]), Ui.TrackEnds),
+                Scale:          0.65,
+                TextColor:      Color.White,
+                Reevaluation:   InworldTextRev.VisibleToPositionAndString,
+                Clipping:       Clipping.DoNotClip,
+                Spectators:     Spectators.VisibleNever);
+            ids += LastTextID();
+        }
+    }
+    DestroyTexts(timeTexts); // after, so nothing blinks
+    timeTexts = ids;
+
+    WaitUntil((!timelineOpen && AlmostEqual(timelineUiYPos.Last, ANIM_HIDDEN_Y))
+        || TRACK_IDS.IsTrueForAny(t => (TrackFrames(t, player) > 0) != timeTracks.Contains(t)), 99999);
+
+    if (!timelineOpen)
+    {
+        DestroyTexts(timeTexts);
+        timeTexts = [];
+    }
     LoopIfConditionIsTrue();
 }
 
