@@ -20,7 +20,7 @@ playervar Number[] optY;       // row height of each item (from LayoutOptions)
 playervar Number[] optVisID;
 playervar Number[] optColRows;
 playervar Number[] optTexts;
-playervar Number[] optBars;
+playervar Number[] optBars!;
 
 Number OptRows(Number id): OPT_KIND[id] == OptKind.Slider ? OPT_SLIDER_ROWS : 1;
 Boolean OptionsShown(): optionsMenuOpen && confirmItem == Item.None;
@@ -164,29 +164,31 @@ if (expandedOpt != Item.None || confirmItem != Item.None || optDrag != Item.None
     LayoutOptions();
 }
 
+// the item and its kind are read through the plain tickK and tickJ, they're last used before LayoutOptions and ApplyOptions
 void ActivateOption(Number id!) playervar "opt - activate"
 {
-    Number kind! = OPT_KIND[id];
+    tickK = id;
+    tickJ = OPT_KIND[tickK];
     optLabelsFresh = false;
 
-    if (kind == OptKind.Toggle)
-        opts[OPT_VAR[id]] = !opts[OPT_VAR[id]];
-    else if (kind == OptKind.Radio)
-        opts[OPT_VAR[id]] = OPT_ARG[id];
-    else if (kind == OptKind.Confirm)
+    if (tickJ == OptKind.Toggle)
+        opts[OPT_VAR[tickK]] = !opts[OPT_VAR[tickK]];
+    else if (tickJ == OptKind.Radio)
+        opts[OPT_VAR[tickK]] = OPT_ARG[tickK];
+    else if (tickJ == OptKind.Confirm)
     {
-        if (id == Item.Export && !TimelineHasFrames(player))
+        if (tickK == Item.Export && !TimelineHasFrames(player))
         {
             SmallMessage(player, "Nothing to export, record something first");
             return;
         }
-        confirmItem = id;
+        confirmItem = tickK;
         return;
     }
 
-    if (kind == OptKind.Group)
-        expandedOpt = expandedOpt == id ? Item.None : id;
-    if (OPT_PARENT.Contains(id))
+    if (tickJ == OptKind.Group)
+        expandedOpt = expandedOpt == tickK ? Item.None : tickK;
+    if (OPT_PARENT.Contains(tickK))
     {
         LayoutOptions();
         cursorShown = -1; // "cursor on top" puts the cursor back over the items

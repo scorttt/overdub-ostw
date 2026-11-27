@@ -82,6 +82,8 @@ Color BluePulse():
     CustomColor(Oscillate(500, 0, 136), Oscillate(500, 153, 219), 255, 255);
 Color RedPulse():
     CustomColor(Oscillate(500, 180, 255), 0, 0, 255);
+Color DisabledColor():
+    CustomColor(140, 140, 140, 255);
 
 Number CursorX(Player p = local): AngleDifference(HorizontalAngleFromDirection(Facing(p)), p.facingX);
 Number CursorY(Player p = local): AngleDifference(VerticalAngleFromDirection(Facing(p)), p.facingY);
@@ -185,7 +187,9 @@ rule: "create timeline text"
                             : local.recordArmed && !ArmedRetake(local)
                             ? "Close to begin"
                             : local.recordArmed || local.recording
-                                ? <"<0> <1>", local.recordArmed ? "Retake at" : "Recording:", FormattedFrameToSec(local.recordArmed ? RetakeStart(local) : local.currFrame)>
+                                ? <"<0> <1>", local.recordArmed ? "Retake at" : "Recording:", [local.recordArmed 
+                                                                                                    ? RetakeStart(local) 
+                                                                                                    : local.currFrame].Map(f => FormattedFrameToSec(f)).First> // mapped so the frame isnt spelled out 4 times
                                 : TimelineHasFrames(local)
                                     ? <"<0> / <1>", FormattedFrameToSec(local.currFrame), FormattedFrameToSec(local.timelineFrames)>
                                     : "Empty track",
@@ -196,35 +200,17 @@ rule: "create timeline text"
         Clipping:       Clipping.DoNotClip,
         Spectators:     Spectators.VisibleNever);
 
-    CreateInWorldText(
-        VisibleTo:      TimelineVisible() && TimelineHasFrames(local) && !local.recording ? local : null,
-        Header:         "┃",
-        Position:       UiPos(FrameToTrackX(local.currFrame), Ui.Seeker),
-        Scale:          2.75,
-        TextColor:      Color.White,
-        Reevaluation:   InworldTextRev.VisibleToAndPosition,
-        Clipping:       Clipping.DoNotClip,
-        Spectators:     Spectators.VisibleNever);
-
-    CreateInWorldText(
-        VisibleTo:      TimelineVisible() && TimelineHasFrames(local) && !local.recording ? local : null,
-        Header:         "▼",
-        Position:       UiPos(TrimStartX(), Ui.Handles),
-        Scale:          2,
-        TextColor:      Color.White,
-        Reevaluation:   InworldTextRev.VisibleToAndPosition,
-        Clipping:       Clipping.DoNotClip,
-        Spectators:     Spectators.VisibleNever);
-
-    CreateInWorldText(
-        VisibleTo:      TimelineVisible() && TimelineHasFrames(local) && !local.recording ? local : null,
-        Header:         "▼",
-        Position:       UiPos(TrimEndX(), Ui.Handles),
-        Scale:          2,
-        TextColor:      Color.White,
-        Reevaluation:   InworldTextRev.VisibleToAndPosition,
-        Clipping:       Clipping.DoNotClip,
-        Spectators:     Spectators.VisibleNever);
+    // the playhead (s = 0) on the bar, the trim start (1) and end (2) handles above it
+    for (Number s! = 0; s < 3; s++)
+        CreateInWorldText(
+            VisibleTo:      TimelineVisible() && TimelineHasFrames(local) && !local.recording ? local : null,
+            Header:         s == 0 ? "┃" : "▼",
+            Position:       UiPos(FrameToTrackX([local.currFrame, local.trimStart, local.trimEnd][Once(s)]), Once(s) == 0 ? Ui.Seeker : Ui.Handles),
+            Scale:          s == 0 ? 2.75 : 2,
+            TextColor:      Color.White,
+            Reevaluation:   InworldTextRev.VisibleToAndPosition,
+            Clipping:       Clipping.DoNotClip,
+            Spectators:     Spectators.VisibleNever);
 
     CreateInWorldText(
         VisibleTo:      TimelineVisible() && local.playMode >= PlayMode.Rewind ? local : null,
@@ -285,7 +271,7 @@ void DestroyTexts(Number[] ids!) playervar "tl - destroy texts"
 {
     for (tickI = 0; tickI < ids.Length; tickI++)
         DestroyInWorldText(ids[tickI]);
-    ids = []; // a ! value, it would stay in the shared array
+    ids = [];
 }
 
 globalvar Color[] TRACK_COLORS! = [
@@ -471,8 +457,15 @@ Event.OngoingPlayer
 if (timelineOpen)
 if (!canUseKeybinds)
 if (!HasStatus(player, Status.Stunned))
-if (!IsPrimaryHeld() && !IsSecondaryHeld() && !IsJumpHeld() && !IsCrouchHeld() && !IsMeleeHeld()
-    && !IsAbility1Held() && !IsAbility2Held() && !IsUltimateHeld() && Abs(ThrottleX()) <= 0.5)
+if (!IsPrimaryHeld())
+if (!IsSecondaryHeld())
+if (!IsJumpHeld())
+if (!IsCrouchHeld())
+if (!IsMeleeHeld())
+if (!IsAbility1Held())
+if (!IsAbility2Held())
+if (!IsUltimateHeld())
+if (Abs(ThrottleX()) <= 0.5)
 {
     WaitIfTrue(0.064);
     canUseKeybinds = true;

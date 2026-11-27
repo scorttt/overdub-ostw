@@ -92,7 +92,7 @@ globalvar Number recSlotKeep!;  // chunks a retake keeps of recSlotTrack, the ol
 // samples read by ReadTrackSample
 playervar Vector readPos;
 playervar Vector readLook;
-playervar Vector readCtrl!;
+playervar Vector readCtrl;
 
 void ClearTrack(Number t!) playervar "rec - clear track"
 {
@@ -114,7 +114,7 @@ void ClearTrack(Number t!) playervar "rec - clear track"
 }
 
 // recTake = track t
-void LoadTrackStage(in Number t)
+void LoadTrackStage(Number t!) playervar "rec - load stage"
 {
     switch (t)
     {
@@ -134,7 +134,7 @@ void LoadTrackStage(in Number t)
 }
 
 // recTake's chunks onto the end of track t
-void AppendTrackStage(in Number t)
+void AppendTrackStage(Number t!) playervar "rec - append stage"
 {
     switch (t)
     {

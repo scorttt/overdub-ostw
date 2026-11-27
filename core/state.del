@@ -15,7 +15,7 @@ playervar Boolean playbackActive; // any form of playback bool
 playervar PlayMode playMode;
 playervar Boolean recording;
 playervar Number framesToSkip!;
-playervar Boolean loopPlayback!;
+playervar Boolean loopPlayback;
 
 playervar Number timelineFrames; // shared timeline length, end frame of the longest track
 playervar Number recStart; // frame the focused track starts at on the shared timeline
@@ -29,7 +29,7 @@ Boolean TimelineHasFrames(Player p = local): p.timelineFrames > 0;
 Boolean CanLoop(): loopPlayback && trimEnd > trimStart;
 Boolean CanPlay(): currFrame != trimEnd || CanLoop(); // play from the playhead, or loop from the trim end
 
-playervar Number[] trackHold; // frame each unfocused track holds with "Play all tracks" off: where playback started, or where it was when focus left it
+playervar Number[] trackHold!; // frame each unfocused track holds with "Play all tracks" off: where playback started, or where it was when focus left it
 playervar Boolean snapRestart!; // play start snap restarts running playback (First Person track switch), the holds are kept
 playervar Number recLimit!; // frames the take can have: the track and total limits, and the trim end with "Stop at trim end"
 

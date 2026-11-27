@@ -73,7 +73,7 @@ Color ButtonColor(Number | Ctrl id, Boolean active = false):
         ? BluePulse()
         : local.ctrlEnabled[id]
             ? Color.White
-            : CustomColor(140, 140, 140, 255);
+            : DisabledColor();
 
 // button positions and hitboxes by Ctrl, and the texts of buttons with a fixed label. arrays, a call per button costs more elements
 rule: "init buttons"

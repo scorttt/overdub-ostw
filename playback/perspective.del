@@ -4,7 +4,7 @@ playervar Boolean firstPerson;
 playervar Boolean firstPersonLeft!; // detached during playback
 playervar Vector firstPersonReturnPos!;
 playervar Vector firstPersonReturnFacing!;
-playervar Boolean firstPersonReturn;   // detached, "bot playback" puts the human back at firstPersonReturnPos and clears it
+playervar Boolean firstPersonReturn!;   // detached, "bot playback" puts the human back at firstPersonReturnPos and clears it
 
 rule: "firstPerson attach"
 Event.OngoingPlayer
@@ -168,15 +168,19 @@ playervar Vector orbitPos;
 playervar Vector orbitUi;       // camera minus human eye, moves the timeline text to the camera, timeline text has a bit of parallax as a compromise
 
 Player OrbitBot(): trackBot[focusedTrack];
-Boolean OrbitActive(): orbiting && opts[Opt.Perspective] == Persp.Orbit && !recording && !recordArmed && !heroSwapping && EntityExists(OrbitBot());
 Vector OrbitSample(): BotPos(OrbitBot()) + Vector(0, ORBIT_HEIGHT, 0);
 Vector OrbitEye(): RayHit(orbitPos, orbitPos - Facing() * orbitDist, null, null) + Facing() * 0.2;
 
 rule: "orbit camera"
 Event.OngoingPlayer
-if (OrbitActive())
+if (orbiting)
+if (opts[Opt.Perspective] == Persp.Orbit)
+if (!recording)
+if (!recordArmed)
+if (!heroSwapping)
+if (EntityExists(OrbitBot()))
 {
-    // loops on the rule's condition, so OrbitActive() is written once
+    // loops on the rules conditions
     orbitPos = OrbitSample();
     if (!orbitCam)
     {

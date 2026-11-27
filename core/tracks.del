@@ -49,17 +49,18 @@ void SelectTrack(Number t!) playervar "track - select track"
 
 void DeleteTrack(Number t!) playervar "track - delete track"
 {
+    tickK = t; // read through the plain tickK, nothing below uses it
     StopAll();
-    DestroyTrackBot(t);
-    ClearTrack(t);
-    trackStart[t] = 0;
-    trackFrames[t] = 0;
+    DestroyTrackBot(tickK);
+    ClearTrack(tickK);
+    trackStart[tickK] = 0;
+    trackFrames[tickK] = 0;
     trackLabelsFresh = false;
-    trackHidden[t] = false;
-    if (trackClipboard == t + 1)
+    trackHidden[tickK] = false;
+    if (trackClipboard == tickK + 1)
         trackClipboard = 0;
 
-    if (t == focusedTrack)
+    if (tickK == focusedTrack)
     {
         recStart = 0;
         recFrames = 0;

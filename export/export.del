@@ -113,7 +113,7 @@ void ExpRead(Number s!) playervar "export - read"
     tickK = MaxAbs(ExpInSteps(expV - expKv));
 }
 
-// key on frame f with value v: short when its gap and deltas fit, a delta key (1 char per axis) when they don't, absolute
+// key on frame f with value v: short when its gap and deltas fit, a delta key (1 char per axis) when they dont, absolute
 // for a value out of the delta range. expKv is computed the way the import computes it, so the next delta starts from what
 // the import has
 void ExpKey(Number f!, Vector v) playervar "export - key"

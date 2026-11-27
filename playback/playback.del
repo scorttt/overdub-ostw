@@ -11,7 +11,7 @@ playervar Number playClock!;     // Time() frame 0 is at
 // the frame playClock is at. bots lead from it, their own Time() is a tick ahead of the currFrame they see
 playervar Number playClockFrame;
 // what bots take off currFrame: the loop's length over a seamless loop's last LOOP_LEAD frames, 0 otherwise
-playervar Number playLoopShift!;
+playervar Number playLoopShift;
 // CORRECT_LEAD, plus the ~2 ticks a moving bot takes to see the owner and be released. a teleport shows 7-8 ticks late, so the jump can still be a tick off
 Number LOOP_LEAD: CORRECT_LEAD + 2;
 

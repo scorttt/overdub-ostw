@@ -174,7 +174,7 @@ void ExpAppend(String s!) playervar "export - append"
     expLine = expLine + s;
 }
 
-void ExpPut(Number[] v, Number width!) playervar "export - put"  // v plain, every key writes it
+void ExpPut(Number[] v, Number width) playervar "export - put"  // v and width plain, every key writes them
 {
     String s! = "";
 

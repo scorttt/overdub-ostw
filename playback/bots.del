@@ -26,7 +26,7 @@ playervar Number botGravity;
 playervar Boolean botSampleDead; // recording is dead at the bot's current frame
 playervar Boolean botDiedInPlay!; // bot died naturally during playback (another track, kill volume)
 playervar Boolean botRecKill!;    // bot is dead because the recording is dead
-playervar Boolean botSyncHealth; // set health from the recording on the next applied frame
+playervar Boolean botSyncHealth!; // set health from the recording on the next applied frame
 playervar Vector botFacing;      // recorded facing, StartFacing() turns a driven bot (and the firstPerson perspective) to it
 playervar Boolean botFacingLocked!; // human only, camera is locked to the recorded facing
 playervar Number botFacingFrame!;   // human only, frame the camera was last turned to while the timeline is open
@@ -75,22 +75,26 @@ Number BotLeadS(Number f): Clamp(f - botStart + CORRECT_LEAD, 0, botFrames - 1);
 Vector BotLeadPos(Number s):  Floor(s / CHUNK_SIZE) == botWinC ? botChunkA[s % CHUNK_SIZE].Pos : botNextPos[s % CHUNK_SIZE]; // s from BotLeadS
 Number BotBtnAt(Number s):    Floor(s / CHUNK_SIZE) == botWinC ? botChunkA[s % CHUNK_SIZE].Ctrl.Y : botNextBtn[s % CHUNK_SIZE];
 
+// t is read through tickK, no caller holds tickK across a spawn and ReadTrackSample only uses tickI and tickJ
 void SpawnTrackBot(Number t!) playervar "bot - spawn track bot"
 {
-    DestroyTrackBot(t);
+    tickK = t;
+    DestroyTrackBot(tickK);
 
-    ReadTrackSample(t, Clamp(currFrame - TrackStart(t, player), 0, TrackFrames(t, player) - 1));
-    CreateDummyBot(trackHero[t], trackTeam[t] == Side.Enemy ? OppositeTeamOf(TeamOf()) : TeamOf(), -1, readPos, LookDir(readLook));
-    trackBot[t] = LastCreatedEntity();
-    trackBot[t].botTrack = t;
-    trackBot[t].botOwner = player; // start the bot playback
+    ReadTrackSample(tickK, Clamp(currFrame - TrackStart(tickK, player), 0, TrackFrames(tickK, player) - 1));
+    CreateDummyBot(trackHero[tickK], trackTeam[tickK] == Side.Enemy ? OppositeTeamOf(TeamOf()) : TeamOf(), -1, readPos, LookDir(readLook));
+    trackBot[tickK] = LastCreatedEntity();
+    trackBot[tickK].botTrack = tickK;
+    trackBot[tickK].botOwner = player; // start bot playback
 }
 
 // the track being recorded has no bot
 void SpawnIdleTrackBot(Number t!) playervar "bot - spawn idle bot"
 {
-    if (TrackFrames(t, player) > 0 && !TrackPlays(t) && !trackHidden[t] && !(recording && t == focusedTrack))
-        SpawnTrackBot(t);
+    tickK = t;
+
+    if (TrackFrames(tickK, player) > 0 && !TrackPlays(tickK) && !trackHidden[tickK] && !(recording && tickK == focusedTrack))
+        SpawnTrackBot(tickK);
 }
 
 void DestroyTrackBot(Number t!) playervar "bot - destroy track bot"

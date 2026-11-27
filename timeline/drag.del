@@ -57,14 +57,8 @@ if (IsDragging(player))
     // the seeker and the handles snap to the track ends
     if (dragTarget != Drag.Track)
     {
-        for (tickI = 0; tickI < MAX_TRACKS; tickI++)
-        {
-            if (TrackFrames(tickI, player) > 0 && Abs(FrameToTrackX(TrackEnd(tickI, player), player) - hoverX) < SNAP_DIST)
-            {
-                tickK = TrackEnd(tickI, player);
-                break;
-            }
-        }
+        tickK = TRACK_IDS.Filter(t => TrackFrames(t, player) > 0).Map(t => TrackEnd(t, player))
+            .Filter(f => Abs(FrameToTrackX(f, player) - hoverX) < SNAP_DIST).Append(-1).First;
     }
 
     // a handle snapping past the other one follows the cursor instead

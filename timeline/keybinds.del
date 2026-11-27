@@ -85,8 +85,10 @@ rule: "recording r + f x2 keybind"
 Event.OngoingPlayer
 if (player == host) // the track storage is global, only the host records
 if (!tracksBusy) // recording shares the import samples
-if (!HasBit(botButtons, Bit.Reload) && !HasBit(botButtons, Bit.Interact)) // not a recorded reload or interact while playing FirstPerson, IsButtonHeld sees those holds
-if (IsReloadHeld() && IsInteractHeld())
+if (!HasBit(botButtons, Bit.Reload))
+if (!HasBit(botButtons, Bit.Interact)) // not a recorded reload or interact while playing FirstPerson, IsButtonHeld sees those holds
+if (IsReloadHeld())
+if (IsInteractHeld())
 {
     WaitUntil(!IsInteractHeld(), 99999);
     WaitUntil(IsInteractHeld() || !IsReloadHeld(), 0.25);
@@ -104,7 +106,7 @@ if (!IsAbility1Held())
 if (!IsInteractHeld())
 if (Abs(ThrottleX()) > 0.5)
 {
-    // 20 D taps (steps?) to reach end of timeline from frame 0 regardless of length, maybe make this an option to scale with track length instead of the full recording?
+    // 20 D steps to reach end of timeline from frame 0 regardless of length
     StopForSeek();
     currFrame = Clamp(currFrame + (ThrottleX() > 0 ? -1 : 1) * Ceil(timelineFrames / 20), trimStart, trimEnd);
     
