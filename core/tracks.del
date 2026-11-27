@@ -13,6 +13,7 @@ globalvar Number[] TRACK_IDS!;
 Number TrackStart(Number t, Player p = local): p.trackStart[t];
 Number TrackFrames(Number t, Player p = local): p.trackFrames[t];
 Number TrackEnd(Number t, Player p = local): TrackStart(t, p) + TrackFrames(t, p);
+Number TrackCount(): trackFrames.Filter(f => f > 0).Length;
 
 void LoadTrack(in Number t)
 {

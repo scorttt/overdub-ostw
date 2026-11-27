@@ -128,6 +128,7 @@ if (confirmItem != Item.None)
         Clipping:       Clipping.DoNotClip,
         Spectators:     Spectators.VisibleNever);
     confirmTexts += LastTextID();
+    CreateCursor();
 
     WaitUntil(confirmItem == Item.None || !optionsMenuOpen, 99999);
 

@@ -236,6 +236,14 @@ rule: "create timeline text"
         Clipping:       Clipping.DoNotClip,
         Spectators:     Spectators.VisibleNever);
 
+    cursorText = -1;
+    CreateCursor();
+}
+
+globalvar Number cursorText!;
+
+void CreateCursor() "tl - create cursor"
+{
     CreateInWorldText(
         VisibleTo:      local.timelineOpen ? local : null,
         Header:         IsDragging() ? "↔" : "{0}TX {1}>".Format([txCharacter, "C0000000002DD21"]),
@@ -248,9 +256,28 @@ rule: "create timeline text"
         Scale:          2,
         Clipping:       Clipping.DoNotClip,
         Reevaluation:   InworldTextRev.VisibleToPositionAndString);
+    DestroyInWorldText(cursorText);
+    cursorText = LastTextID();
 }
 
-Number TrackCount(): trackFrames.Filter(f => f > 0).Length;
+// the timeline, track menu and options page that were shown, the focused track and how many tracks have a marker, when the cursor was last made
+playervar Number cursorShown!;
+Number CursorShownNow(): timelineOpen + 2 * trackMenuOpen + 4 * OptionsShown() + 8 * focusedTrack + 128 * trackFrames.Filter(f => f > 0).Length;
+
+// texts that appear after the cursor is drawn over it, so recreate the cursor once text visibilty changes or creation happens
+// waits a tick so "track markers" has put the focused track's marker on top first
+rule: "cursor on top"
+Event.OngoingPlayer
+if (cursorShown != CursorShownNow())
+{
+    cursorShown = CursorShownNow();
+
+    MinWait();
+    if (timelineOpen)
+        CreateCursor();
+
+    LoopIfConditionIsTrue();
+}
 
 playervar Number[] trackMarkerTexts;
 
