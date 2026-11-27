@@ -19,10 +19,10 @@ void LoadTrack(in Number t)
     recStart = trackStart[t];
     recFrames = trackFrames[t];
 }
-// the timeline length from the tracks, the trims and the playhead are clamped into it
+// a track slid before frame 0 counts its whole length, so it can always slide back
 void UpdateTimelineFrames() playervar "track - update timeline frames"
 {
-    timelineFrames = SortedArray(TRACK_IDS.Map(t => TrackEnd(t, player)), Curr()).Last;
+    timelineFrames = SortedArray(TRACK_IDS.Map(t => TrackFrames(t, player) + Max(TrackStart(t, player), 0)), Curr()).Last;
     trimStart = Clamp(trimStart, 0, timelineFrames);
     trimEnd = Clamp(trimEnd, trimStart, timelineFrames);
     currFrame = Clamp(currFrame, trimStart, trimEnd);

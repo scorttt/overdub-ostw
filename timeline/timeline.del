@@ -18,7 +18,8 @@ enum Drag
     None,
     Seeker,
     LHandle,
-    RHandle
+    RHandle,
+    Track   // a track's label, slides the track
 }
 
 Number TRACK_HALF:  2.60; // timeline track spans -TRACK_HALF to TRACK_HALF on the menu x axis
@@ -33,6 +34,10 @@ Number HANDLE_MIN_GAP:   0.05;
 
 Number SEEKER_Y_MIN: -0.975;
 Number SEEKER_Y_MAX: -0.825;
+
+Number TRACK_LABEL_HALF_W: 0.05;
+Number TRACK_LABEL_Y_MIN:  -1.050; // a track's label is grabbed between these
+Number TRACK_LABEL_Y_MAX:  -0.980;
 
 Number SCREEN_WIDTH:  3.65;
 Number SCREEN_HEIGHT: 2.125;
@@ -52,6 +57,8 @@ playervar Boolean animating;
 playervar Boolean closing;
 
 playervar Number dragTarget;
+playervar Number slideTrack; // track whose label is hovered or slid
+playervar Boolean dragNudged!; // slide was nudged with Q/E
 
 playervar Number objectiveNext!; // objective the objective button teleports to
 
@@ -107,9 +114,11 @@ Number ThrottleX(Player p = player): ThrottleOf(p).X;
 Boolean TimelineVisible(): local.timelineOpen || local.closing;
 
 Boolean IsDragging(Player p = local): p.dragTarget != Drag.None;
-Number FrameToFraction(Number f, Player p = local): f / p.timelineFrames;
+Number FrameToFraction(Number f, Player p = local): f / p.timelineView;
 Number FrameToTrackX(Number f, Player p = local):   FrameToFraction(f, p) * TRACK_WIDTH - TRACK_HALF;
-Number TrackXToFrame(Number x, Player p = local):   Floor(p.timelineFrames * NormalizedRange(Clamp(x, -TRACK_HALF, TRACK_HALF), -TRACK_HALF, TRACK_HALF));
+Number TrackXToFrame(Number x, Player p = local):   Floor(p.timelineView * NormalizedRange(Clamp(x, -TRACK_HALF, TRACK_HALF), -TRACK_HALF, TRACK_HALF));
+// track labels sit between their brackets, halfway from its start (0 when before frame 0) to its end
+Number TrackLabelFrame(Number t, Player p = local): (Max(TrackStart(t, p), 0) + TrackEnd(t, p)) / 2;
 
 Number TrimStartX(Player p = local):                FrameToTrackX(p.trimStart, p);
 Number TrimEndX(Player p = local):                  FrameToTrackX(p.trimEnd, p);
@@ -337,6 +346,20 @@ if (!IsPrimaryHeld() && !IsSecondaryHeld() && !IsJumpHeld() && !IsCrouchHeld() &
 {
     WaitIfTrue(0.064);
     canUseKeybinds = true;
+}
+
+// a slide's zoom (and any other length change) eases. a recording grows the length every tick and sets the view with it
+playervar Number timelineView;
+rule: "timeline zoom"
+Event.OngoingPlayer
+if (timelineOpen)
+if (timelineView != timelineFrames)
+{
+    timelineView = Abs(timelineView - timelineFrames) < 1 
+                        ? timelineFrames 
+                        : Lerp(timelineView, timelineFrames, ANIM_SPEED);
+    MinWait();
+    LoopIfConditionIsTrue();
 }
 
 void StepAnim() playervar "tl - anim"

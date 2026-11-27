@@ -276,8 +276,8 @@ if (EntityExists(botOwner))
 
     while (EntityExists(botOwner))
     {
-        // no window yet, or switched to diff track when FirstPerson
-        if (botWinC == -2)
+        // no window yet, switched to diff track when FirstPerson, or slid (the same frame is a different sample now)
+        if (botWinC == -2 || botStart != TrackStart(botTrack, botOwner))
             botFrame = -1;
 
         botKey = botOwner.playKey; // with the state read below, the driven loop runs until it changes
@@ -617,7 +617,7 @@ if (EntityExists(botOwner))
         // an owner's playKey reads 0
         if (IsDummyBot() && !botDriven && botFrame != -1)
         {
-            WaitUntil(IsDead() != botDead || botOwner.playKey != botKey
+            WaitUntil(IsDead() != botDead || botOwner.playKey != botKey || TrackStart(botTrack, botOwner) != botStart
                 || (!botHoldRec && !botHoldFocus && Clamp(BotOwnerFrame(), botStart - CORRECT_LEAD, botStart + botFrames - 1) != botF), botResetDue ? RESET_REST : 0.5);
         }
     }

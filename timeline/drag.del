@@ -1,6 +1,9 @@
 import "../main.del";
 
 Number SNAP_DIST: 0.0175;
+Number SLIDE_ZOOM_SPEED: 0.03; // track slideing zoom in/out per tick
+
+playervar Boolean slideTrimAtEnd!;
 
 rule: "grab"
 Event.OngoingPlayer
@@ -11,15 +14,35 @@ if (IsPrimaryHeld())
 if (!IsDragging(player))
 if (handleTip != Drag.None || (Abs(hoverX) < TRACK_HALF && IsInRange(hoverY, SEEKER_Y_MIN, SEEKER_Y_MAX)))
 {
-    if (handleTip != Drag.None)
-        dragTarget = handleTip;
-    else
-    {
-        dragTarget = Drag.Seeker;
+    dragTarget = Max(handleTip, <Number>Drag.Seeker); // a hovered handle or track label (all above Seeker), else the seeker
+
+    if (dragTarget == Drag.Seeker || dragTarget == Drag.Track)
         StopForSeek();
+
+    // a slide zooms the bar out by the track's length, the room it has past the end, up to the frame budget
+    // cursor moves onto its label where it ends up once the zoom has eased (facingX anchors the cursor), so a grab itself doesnt move the track
+    dragNudged = false;
+    if (dragTarget == Drag.Track)
+    {
+        slideTrimAtEnd = trimEnd >= timelineFrames;
+        timelineFrames = Max(timelineFrames, Min(timelineFrames + trackFrames[slideTrack], MAX_TOTAL_SAMPLES));
+        tickK = TrackLabelFrame(slideTrack, player) / timelineFrames * TRACK_WIDTH - TRACK_HALF - hoverX; // how far the cursor moves
+        facingX += tickK;
+        hoverX += tickK;
     }
 
     WaitUntil(!IsPrimaryHeld() || !timelineOpen, 99999);
+
+    // fitted to the tracks again, a trim end that was at the end before the slide stays there
+    if (dragTarget == Drag.Track)
+    {
+        UpdateTimelineFrames();
+
+        if (slideTrimAtEnd)
+            trimEnd = timelineFrames;
+
+        canUseKeybinds = false; // a nudge key still held would step the playhead
+    }
 
     dragTarget = Drag.None;
 }
@@ -31,7 +54,8 @@ if (IsDragging(player))
 {
     tickK = -1; // frame the drag snaps to
 
-    if (tickK == -1)
+    // the seeker and the handles snap to the track ends
+    if (dragTarget != Drag.Track)
     {
         for (tickI = 0; tickI < MAX_TRACKS; tickI++)
         {
@@ -45,7 +69,11 @@ if (IsDragging(player))
 
     // a handle snapping past the other one follows the cursor instead
     if (tickK == -1 || (dragTarget == Drag.LHandle && tickK > trimEnd) || (dragTarget == Drag.RHandle && tickK < trimStart))
-        tickK = TrackXToFrame(hoverX, player);
+    {
+        tickK = dragTarget == Drag.Track 
+                    ? timelineFrames * (hoverX + TRACK_HALF) / TRACK_WIDTH 
+                    : TrackXToFrame(hoverX, player);
+    }
 
     switch (dragTarget)
     {
@@ -74,8 +102,60 @@ if (IsDragging(player))
             }
 
             break;
+
+        // the slid track's label follows the cursor, up to the timeline's end. its start snaps to the playhead and the trim markers, its end to the other tracks' ends and the trim markers
+        // slides can start before frame 0, the data just doesnt play, nothing is permanently cut
+        case Drag.Track:
+            tickI = slideTrack;
+            tickJ = trackFrames[tickI];
+            tickK = tickK < tickJ / 2 ? 2 * tickK - tickJ : tickK - tickJ / 2;
+
+            // a track end the cursor pushes past the end zooms out, up to the frame budget, and a start pushed before the start zooms in, down to the length the tracks fit in or the trim end
+            // zooms faster the further past. zoom in goes by the share of the track that's before the start, bar units would grow as the bar zooms in
+            if (tickK + tickJ > timelineFrames)
+            {
+                timelineFrames = Min(timelineFrames * (1 + SLIDE_ZOOM_SPEED * (tickK + tickJ - timelineFrames) / timelineFrames * TRACK_WIDTH),
+                                    Max(timelineFrames, MAX_TOTAL_SAMPLES));
+            }
+            else if (tickK < 0)
+            {
+                timelineFrames = Max(timelineFrames / (1 - SLIDE_ZOOM_SPEED * tickK / tickJ),
+                                    Min(timelineFrames, Max(trimEnd, SortedArray(TRACK_IDS.Map(t => TrackFrames(t, player) + Max(TrackStart(t, player), 0)), Curr()).Last)));
+            }
+            
+            if (!dragNudged)
+            {
+                tickK = [currFrame, trimStart, trimEnd]
+                            .Append(TRACK_IDS.Filter(t => TrackFrames(t, player) > 0 && t != tickI).Map(t => TrackEnd(t, player)).Append([trimStart, trimEnd]).Map(e => e - tickJ))
+                            .Filter(f => Abs(FrameToFraction(f - tickK, player)) * TRACK_WIDTH < SNAP_DIST).Append(tickK).First;
+            }
+
+            tickK = Clamp(Near(tickK), 1 - tickJ, Min(timelineView, timelineFrames) - tickJ); // the eased view trails a zoom out
+
+            trackStart[tickI] = tickK;
+
+            if (tickI == focusedTrack)
+                recStart = tickK;
+
+            break;
     }
 
     MinWait();
+    LoopIfConditionIsTrue();
+} 
+
+rule: "slide nudge"
+Event.OngoingPlayer
+if (dragTarget == Drag.Track)
+if (IsUltimateHeld() || IsAbility2Held())
+{
+    dragNudged = true;
+    tickJ = IsAbility2Held() ? 1 : -1; // E later, Q earlier
+    
+    // a frame's step of the start moves the label half as far while the start is before frame 0
+    tickK = tickJ * (trackStart[slideTrack] + Min(tickJ, 0) >= 0 ? 1 : 0.5) * TRACK_WIDTH / timelineFrames;
+    facingX += tickK;
+    hoverX += tickK;
+    WaitIfTrue(0.125);
     LoopIfConditionIsTrue();
 }

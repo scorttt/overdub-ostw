@@ -351,7 +351,7 @@ if (!timelineOpen)
     // replacing a track starts from the same spot, before the countdown so it's spent there. reads the old samples, take clears them
     else if (OptOn(Opt.TeleportOnRecord) && HasRecording())
     {
-        ReadTrackSample(focusedTrack, 0);
+        ReadTrackSample(focusedTrack, Max(-recStart, 0)); // its first sample on the timeline, a slid track can start before frame 0
         TeleportFacing(readPos, LookDir(readLook));
     }
     currFrame = target; // the other bots show the frame the take starts at
@@ -568,7 +568,10 @@ if (recording)
     // tickK is the recording's end, a plain variable since this runs every tick
     tickK = recStart + recFrames;
     if (tickK > timelineFrames)
+    {
         timelineFrames = tickK;
+        timelineView = tickK; // the bar follows a recording exactly, "timeline zoom" would ease it every tick
+    }
     if (tickK > trimEnd)
         trimEnd = tickK;
 

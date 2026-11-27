@@ -114,19 +114,42 @@ if (timelineOpen)
     // tooltip for the hovered button, the record tooltip stays while recording
     tipCtrl = hoverHit != Ctrl.None && hoverHit < HIT_TRACK ? hoverHit : recording ? Ctrl.Record : Ctrl.None;
 
-    tickK = Drag.None; // hovered trim handle
-    if (dragTarget == Drag.LHandle || dragTarget == Drag.RHandle)
+    tickK = Drag.None; // hovered trim handle or track label
+    if (dragTarget >= Drag.LHandle)
         tickK = dragTarget;
 
-    else if (!IsDragging(player) && !recording && TimelineHasFrames(player) && IsInRange(hoverY, HANDLE_Y_MIN, HANDLE_Y_MAX))
+    else if (!IsDragging(player) && !recording)
     {
-        tickI = Abs(hoverX - TrimStartX(player)) <= HANDLE_HALF_W; // over the left handle
-        tickJ = TrimEndX(player) - TrimStartX(player) < HANDLE_MIN_GAP; // handles are close together
-        if (Abs(hoverX - TrimEndX(player)) <= HANDLE_HALF_W || (tickI && tickJ))
-            // right handle wins, unless its at the timeline end and cant go anywhere
-            tickK = trimEnd >= timelineFrames && tickJ ? Drag.LHandle : Drag.RHandle;
-        else if (tickI)
-            tickK = Drag.LHandle;
+        if (IsInRange(hoverY, TRACK_LABEL_Y_MIN, TRACK_LABEL_Y_MAX))
+        {
+            // the track whose label is under the cursor, the focused track's wins (a copy starts on its source)
+            tickI = SortedArray(TRACK_IDS.Filter(t => TrackFrames(t, player) > 0 
+                                                && Abs(hoverX - FrameToTrackX(TrackLabelFrame(t, player), player)) <= TRACK_LABEL_HALF_W),
+                                Curr() == focusedTrack ? -1 : Curr()).Append(-1).First;
+
+            if (tickI != -1)
+            {
+                tickK = Drag.Track;
+
+                if (slideTrack != tickI)
+                    slideTrack = tickI;
+            }
+        }
+        else if (TimelineHasFrames(player) && IsInRange(hoverY, HANDLE_Y_MIN, HANDLE_Y_MAX))
+        {
+            tickI = Abs(hoverX - TrimStartX(player)) <= HANDLE_HALF_W; // over the left handle
+            tickJ = TrimEndX(player) - TrimStartX(player) < HANDLE_MIN_GAP; // handles are close together
+
+            if (Abs(hoverX - TrimEndX(player)) <= HANDLE_HALF_W || (tickI && tickJ))
+            {
+                // right handle wins, unless its at the timeline end
+                tickK = trimEnd >= timelineFrames && tickJ ? Drag.LHandle : Drag.RHandle;
+            }
+            else if (tickI)
+            {
+                tickK = Drag.LHandle;
+            }
+        }
     }
 
     if (handleTip != tickK)
@@ -145,23 +168,34 @@ if (timelineOpen)
 }
 
 playervar Number handleTip;
-playervar Number handleTipText!;
+playervar Number[] handleTipTexts!;
+
+// the frame timestamp s shows: a trim handle's (s = 0), or a hovered or slid track's start (s = 0, 0 when before frame 0) and end
+// (s = 1). picked by Drag's order, LHandle, RHandle then Track
+Number HandleTipFrame(Number s):
+    [local.trimStart, local.trimEnd, Max(local.trackStart[local.slideTrack], 0), TrackEnd(local.slideTrack)][local.handleTip - Drag.LHandle + s];
+
 rule: "handle timestamp"
 Event.OngoingPlayer
 if (handleTip != Drag.None)
 {
-    CreateInWorldText(
-        VisibleTo:      player,
-        Header:         FormattedFrameToSec(local.handleTip == Drag.LHandle ? local.trimStart : local.trimEnd),
-        Position:       UiPos((local.handleTip == Drag.LHandle ? TrimStartX() : TrimEndX()), Ui.HandleTime),
-        Scale:          0.65,
-        TextColor:      Color.White,
-        Reevaluation:   InworldTextRev.VisibleToPositionAndString,
-        Clipping:       Clipping.DoNotClip,
-        Spectators:     Spectators.VisibleNever);
-    handleTipText = LastTextID();
+    // the second only for a track. a track label's times are on the labels' row
+    handleTipTexts = [];
+    for (Number s! = 0; s < 2; s++)
+    {
+        CreateInWorldText(
+            VisibleTo:      Once(s) == 0 || local.handleTip == Drag.Track ? player : null,
+            Header:         [HandleTipFrame(Once(s))].Map(f => FormattedFrameToSec(f)).First, // mapped, so the frame isnt spelled out 4 times
+            Position:       UiPos(FrameToTrackX(HandleTipFrame(Once(s))), local.handleTip == Drag.Track ? Ui.TrackEnds : Ui.HandleTime),
+            Scale:          0.65,
+            TextColor:      Color.White,
+            Reevaluation:   InworldTextRev.VisibleToPositionAndString,
+            Clipping:       Clipping.DoNotClip,
+            Spectators:     Spectators.VisibleNever);
+        handleTipTexts += LastTextID();
+    }
 
     WaitUntil(handleTip == Drag.None, 99999);
 
-    DestroyInWorldText(handleTipText);
+    DestroyTexts(handleTipTexts);
 }
