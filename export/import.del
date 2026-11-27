@@ -150,21 +150,15 @@ if (IsAlive())
     String loadedMap! = <"<0>", CurrentMap()>;
     if (importMap != loadedMap)
     {
+        // one text, the two lines are its subheader and text. a map's name has the expected map in its name, e.g. King's Row (Winter)
         CreateHudText(
             VisibleTo:      All(),
             Subheader:      <" \n<0> Warning: current map is not the same as the import's map! Expected <1>", IconString(Icon.Warning), importMap>,
+            Text:           <"<0> is loaded<1>", loadedMap, StringContains(importMap, loadedMap) || StringContains(loadedMap, importMap) ? ", is this the same map variant?" : "">,
             Location:       Location.Top,
             SortOrder:      3,
             SubheaderColor: Color.Yellow,
-            Reevaluation:   HudTextRev.VisibleTo,
-            Spectators:     Spectators.VisibleNever);
-        // a map's name has the expected map in its name, e.g. King's Row (Winter)
-        CreateHudText(
-            VisibleTo:      All(),
-            Subheader:      <"<0> is loaded<1>", loadedMap, StringContains(importMap, loadedMap) || StringContains(loadedMap, importMap) ? ", is this the same map variant?" : "">,
-            Location:       Location.Top,
-            SortOrder:      3,
-            SubheaderColor: Color.Yellow,
+            TextColor:      Color.Yellow,
             Reevaluation:   HudTextRev.VisibleTo,
             Spectators:     Spectators.VisibleNever);
     }
