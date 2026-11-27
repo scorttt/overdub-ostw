@@ -1,16 +1,18 @@
 import "../main.del";
 
-Number TRACK_MENU_TOP_Y:       0.55;
+Number TRACK_MENU_X:           0.9;  // the row labels' center, the buttons sit left of it
+Number TRACK_MENU_TOP_Y:       0.65;
 Number TRACK_MENU_SPACING:     0.10;
 Number TRACK_SLOT_HIT_WIDTH:   1.40;
-Number TRACK_TEAM_X:           1.05;
-Number TRACK_TEAM_HALF_W:      0.25;
-Number TRACK_HIDE_X:           -1.45;
-Number TRACK_DELETE_X:         -1.00;
-Number TRACK_BTN_HALF_W:       0.22;
+Number TRACK_TEAM_X:           TRACK_MENU_X - 2.30;
+Number TRACK_HIDE_X:           TRACK_MENU_X - 1.60;
+Number TRACK_DELETE_X:         TRACK_MENU_X - 1.24;
+Number TRACK_BTN_HALF_W:       0.17; // at most half the buttons spacing, so the hitboxes dont overlap
+Number TRACK_ACTIONS_X:        TRACK_MENU_X - 1.755; // Team/Copy/Hide/Delete text center
 Number TRACK_DELETE_ALL_ROW: MAX_TRACKS + 0.5;
+Number TRACK_BUDGET_Y:       -0.80; // centered on screen, not with the menu
 
-// <FG> tag colors of the Hide/Delete text: hover (OPT_HOVER_COLOR), white, red, gray
+// <FG> tag colors of the Team/Hide/Delete text: hover (OPT_HOVER_COLOR), white, red, gray
 String HEX_HOVER: "44BAFFFF";
 String HEX_WHITE: "FFFFFFFF";
 String HEX_RED:   "FF0000FF";
@@ -18,21 +20,20 @@ String HEX_GRAY:  "808080FF";
 
 playervar Number[] trackMenuTexts;
 playervar String[] trackLabels;
-playervar String[] trackActions;     // the Hide and Delete buttons of each row, one text colored with <FG> tags
+playervar String[] trackActions;     // the Team, Hide and Delete buttons of each row, one text colored with <FG> tags
 playervar Boolean trackLabelsFresh;  // set false wherever a track's length, hero, hidden state or the focus changes
-playervar Number trackLabelsHover!;  // hovered and confirmId the Hide/Delete strings were built for
+playervar Number trackLabelsHover!;  // hovered and confirmId the action strings were built for
 playervar Number trackLabelsConfirm!;
 
-// a hovered or confirmed id as the Hide/Delete strings show it, hovering anything else doesnt rebuild them
-Number ActionHit(Number id): IsInRange(id, HIT_HIDE, HIT_DELETE + MAX_TRACKS - 1) ? id : Ctrl.None;
+// a hovered or confirmed id as the action strings show it, hovering anything else (but Delete All) doesnt rebuild them
+Number ActionHit(Number id): IsInRange(id, HIT_TEAM, HIT_DELETE + MAX_TRACKS - 1) ? id : Ctrl.None;
 
 // the row labels are built here, a formatted string in a text takes seconds to show.
-// the Hide/Delete strings also follow the hover and confirmation while the menu is open. the loops count with the
-// plain tickI, there's no wait before the end
+// the Team/Hide/Delete strings also follow the hover and confirmation while the menu is open. loop counts with tickI, no wait before the end
 rule: "track menu labels"
 Event.OngoingPlayer
-if (timelineOpen)
-if (!trackLabelsFresh || (trackMenuOpen && (ActionHit(hovered) != trackLabelsHover || ActionHit(confirmId) != trackLabelsConfirm)))
+if (trackMenuOpen)
+if (!trackLabelsFresh || ActionHit(hovered) != trackLabelsHover || ActionHit(confirmId) != trackLabelsConfirm)
 {
     if (!trackLabelsFresh)
     {
@@ -58,49 +59,42 @@ if (!trackLabelsFresh || (trackMenuOpen && (ActionHit(hovered) != trackLabelsHov
 
     trackLabelsHover = ActionHit(hovered);
     trackLabelsConfirm = ActionHit(confirmId);
+
     for (tickI = 0; tickI < MAX_TRACKS; tickI++)
-        trackActions[tickI] = <"<0>FG<1>><2><3><0>FG<4>><5>",
+        trackActions[tickI] = <"<0>FG<6>><7><3><0>FG<1>><2><3><0>FG<4>><5>", // this is disgusting
             txCharacter,
             hovered == HIT_HIDE + tickI ? HEX_HOVER : HEX_WHITE,
             trackHidden[tickI] ? "Show" : "Hide",
             "         ",
             trackFrames[tickI] == 0 ? HEX_GRAY : confirmId == HIT_DELETE + tickI ? HEX_RED : hovered == HIT_DELETE + tickI ? HEX_HOVER : HEX_WHITE,
-            confirmId == HIT_DELETE + tickI ? "Delete?" : "Delete">;
+            confirmId == HIT_DELETE + tickI ? "Delete?" : "Delete",
+            hovered == HIT_TEAM + tickI ? HEX_HOVER : trackTeam[tickI] == Side.Enemy ? HEX_RED : HEX_WHITE,
+            trackTeam[tickI] == Side.Enemy ? "Enemy" : "Ally">;
 
     MinWait();
     LoopIfConditionIsTrue();
 }
 
+// the texts exist while the menu is open
 rule: "track menu"
 Event.OngoingPlayer
-if (timelineOpen)
+if (trackMenuOpen)
 {
-    trackLabelsFresh = false; // not kept up to date while the timeline is closed
+    trackLabelsFresh = false; // not kept up to date while the menu is closed
     trackMenuTexts = [];
     Wait(0.032); // wait so "cursor on top" makes the cursor first
 
-    CreateInWorldText(
-        VisibleTo:      trackMenuOpen ? player : null,
-        Header:         "Select Track",
-        Position:       RenderPosOf(0, TRACK_MENU_TOP_Y + 0.15),
-        Scale:          2,
-        TextColor:      Color.White,
-        Reevaluation:   InworldTextRev.VisibleToAndPosition,
-        Clipping:       Clipping.DoNotClip,
-        Spectators:     Spectators.VisibleNever);
-    trackMenuTexts += LastTextID();
-
     for (Number i! = 0; i < MAX_TRACKS; i++)
     {
-        if (!timelineOpen)
+        if (!trackMenuOpen)
             break;
 
         WaitUntil(ServerLoad() < 225, 99999);
 
         CreateInWorldText(
-            VisibleTo:      trackMenuOpen ? player : null,
+            VisibleTo:      player,
             Header:         local.trackLabels[Once(i)],
-            Position:       RenderPosOf(0, TRACK_MENU_TOP_Y - (Once(i)) * TRACK_MENU_SPACING),
+            Position:       RenderPosOf(TRACK_MENU_X, TRACK_MENU_TOP_Y - (Once(i)) * TRACK_MENU_SPACING),
             Scale:          1.5,
             TextColor:      IsHovered(Once(HIT_TRACK + i)) ? OPT_HOVER_COLOR
                                 : local.focusedTrack == Once(i)
@@ -111,26 +105,11 @@ if (timelineOpen)
             Spectators:     Spectators.VisibleNever);
         trackMenuTexts += LastTextID();
 
+        // Team, Hide and Delete
         CreateInWorldText(
-            VisibleTo:      trackMenuOpen ? player : null,
-            Header:         local.trackTeam[Once(i)] == Side.Enemy ? "Enemy" : "Ally",
-            Position:       RenderPosOf(TRACK_TEAM_X, TRACK_MENU_TOP_Y - (Once(i)) * TRACK_MENU_SPACING),
-            Scale:          1.5,
-            TextColor:      IsHovered(Once(HIT_TEAM + i))
-                                ? OPT_HOVER_COLOR
-                                : local.trackTeam[Once(i)] == Side.Enemy
-                                    ? Color.Red
-                                    : Color.White,
-            Reevaluation:   InworldTextRev.VisibleToPositionStringAndColor,
-            Clipping:       Clipping.DoNotClip,
-            Spectators:     Spectators.VisibleNever);
-        trackMenuTexts += LastTextID();
-        
-        // Hide and Delete, centered between their hit boxes
-        CreateInWorldText(
-            VisibleTo:      trackMenuOpen ? player : null,
+            VisibleTo:      player,
             Header:         local.trackActions[Once(i)],
-            Position:       RenderPosOf((TRACK_HIDE_X + TRACK_DELETE_X) / 2, TRACK_MENU_TOP_Y - (Once(i)) * TRACK_MENU_SPACING),
+            Position:       RenderPosOf(TRACK_ACTIONS_X, TRACK_MENU_TOP_Y - (Once(i)) * TRACK_MENU_SPACING),
             Scale:          1.5,
             TextColor:      Color.White,
             Reevaluation:   InworldTextRev.VisibleToPositionAndString,
@@ -142,9 +121,9 @@ if (timelineOpen)
     }
 
     CreateInWorldText(
-        VisibleTo:      trackMenuOpen ? player : null,
+        VisibleTo:      player,
         Header:         local.confirmId == HIT_DELETE_ALL ? "Confirm Delete All?" : "Delete All Tracks",
-        Position:       RenderPosOf(0, TRACK_MENU_TOP_Y - TRACK_DELETE_ALL_ROW * TRACK_MENU_SPACING),
+        Position:       RenderPosOf(TRACK_MENU_X, TRACK_MENU_TOP_Y - TRACK_DELETE_ALL_ROW * TRACK_MENU_SPACING),
         Scale:          1.5,
         TextColor:      local.confirmId == HIT_DELETE_ALL
                             ? Color.Red
@@ -157,9 +136,9 @@ if (timelineOpen)
     trackMenuTexts += LastTextID();
 
     CreateInWorldText(
-        VisibleTo:      trackMenuOpen ? player : null,
+        VisibleTo:      player,
         Header:         local.trackLabels[MAX_TRACKS],
-        Position:       RenderPosOf(0, TRACK_MENU_TOP_Y - (TRACK_DELETE_ALL_ROW + 1) * TRACK_MENU_SPACING),
+        Position:       RenderPosOf(0, TRACK_BUDGET_Y),
         Scale:          1.2,
         TextColor:      Color.White,
         Reevaluation:   InworldTextRev.VisibleToPositionAndString,
@@ -168,7 +147,7 @@ if (timelineOpen)
     trackMenuTexts += LastTextID();
     CreateCursor();
 
-    WaitUntil(!timelineOpen, 99999);
+    WaitUntil(!trackMenuOpen, 99999);
 
     DestroyTexts(trackMenuTexts);
     LoopIfConditionIsTrue();
@@ -177,14 +156,23 @@ if (timelineOpen)
 void TrackMenuClick(in Number id)
 {
     if (id < HIT_TEAM)
+    {
+        trackMenuOpen = false;
         async! SelectTrack(id - HIT_TRACK);
+    }
     else if (id < HIT_DELETE_ALL)
+    {
         async! ToggleTrackTeam(id - HIT_TEAM);
+    }
     else if (id >= HIT_HIDE && id < HIT_DELETE)
+    {
         async! ToggleTrackHidden(id - HIT_HIDE);
+    }
     // first click asks for confirmation
     else if (confirmId != id)
+    {
         confirmId = id;
+    }
     else
     {
         confirmId = Ctrl.None;

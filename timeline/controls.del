@@ -70,16 +70,16 @@ if (timelineOpen)
 
         if (IsInRange(Floor(tickJ), 0, MAX_TRACKS - 1))
         {
-            if (Abs(hoverX - TRACK_TEAM_X) < TRACK_TEAM_HALF_W)
+            if (Abs(hoverX - TRACK_TEAM_X) < TRACK_BTN_HALF_W)
                 hoverHit = HIT_TEAM + Floor(tickJ);
-            else if (Abs(hoverX) <= TRACK_SLOT_HIT_WIDTH / 2)
+            else if (Abs(hoverX - TRACK_MENU_X) <= TRACK_SLOT_HIT_WIDTH / 2)
                 hoverHit = HIT_TRACK + Floor(tickJ);
             else if (Abs(hoverX - TRACK_HIDE_X) < TRACK_BTN_HALF_W)
                 hoverHit = HIT_HIDE + Floor(tickJ);
             else if (Abs(hoverX - TRACK_DELETE_X) < TRACK_BTN_HALF_W && TrackFrames(Floor(tickJ), player) > 0)
                 hoverHit = HIT_DELETE + Floor(tickJ);
         }
-        else if (Abs(hoverX) < TRACK_SLOT_HIT_WIDTH / 2 && IsInRange(tickJ, TRACK_DELETE_ALL_ROW, TRACK_DELETE_ALL_ROW + 1))
+        else if (Abs(hoverX - TRACK_MENU_X) < TRACK_SLOT_HIT_WIDTH / 2 && IsInRange(tickJ, TRACK_DELETE_ALL_ROW, TRACK_DELETE_ALL_ROW + 1))
             hoverHit = HIT_DELETE_ALL;
     }
     else if (optionsMenuOpen && confirmItem == Item.None)

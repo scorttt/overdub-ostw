@@ -31,8 +31,6 @@ void UpdateTimelineFrames() playervar "track - update timeline frames"
 
 void SelectTrack(Number t!) playervar "track - select track"
 {
-    trackMenuOpen = false;
-
     if (t == focusedTrack)
         return;
 

@@ -301,9 +301,11 @@ void ActivateCtrl(Number | Ctrl ctrl) playervar "tl - selection handler"
             ToggleTrackTeam(focusedTrack);
             break;
         case Ctrl.PrevTrack:
+            trackMenuOpen = false;
             SelectTrack((focusedTrack + MAX_TRACKS - 1) % MAX_TRACKS);
             break;
         case Ctrl.NextTrack:
+            trackMenuOpen = false;
             SelectTrack((focusedTrack + 1) % MAX_TRACKS);
             break;
         case Ctrl.Loop:
