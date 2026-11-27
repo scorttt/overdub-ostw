@@ -126,12 +126,12 @@ rule: "create button texts"
                          !IsHovered(Ctrl.Record)                                                                     // Record
                              ? "Recording"
                              : local.recording
-                                 ? <"Stop Recording [Hold <0> + <1> x2]", BindString(Button.Reload), BindString(Button.Interact)>
+                                 ? <"Stop Recording [Hold <0> then <1> x2]", BindString(Button.Reload), BindString(Button.Interact)>
                                  : local.recordArmed
                                      ? ArmedRetake(local) ? "Cancel Retake, click again to replace track" : "Cancel Recording"
                                      : local.canRetake
                                          ? local.currFrame < local.recStart + local.recFrames ? "Retake from playhead" : "Retake from end of track"
-                                         : <"<0> [Hold <1> + <2> x2]", HasRecording(local) ? "Replace Track" : "Start Recording", BindString(Button.Reload), BindString(Button.Interact)>,
+                                         : <"<0> [Hold <1> then <2> x2]", HasRecording(local) ? "Replace Track" : "Start Recording", BindString(Button.Reload), BindString(Button.Interact)>,
                          "",                                                                                         // Track
                          local.confirmId == Ctrl.DeleteTrack ? "Confirm Delete?" : "Delete Current Track",           // DeleteTrack
                          "",                                                                                         // ChangeHero
