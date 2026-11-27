@@ -5,6 +5,7 @@ Number TRACK_MENU_TOP_Y:       0.65;
 Number TRACK_MENU_SPACING:     0.10;
 Number TRACK_SLOT_HIT_WIDTH:   1.40;
 Number TRACK_TEAM_X:           TRACK_MENU_X - 2.30;
+Number TRACK_COPY_X:           TRACK_MENU_X - 1.95;
 Number TRACK_HIDE_X:           TRACK_MENU_X - 1.60;
 Number TRACK_DELETE_X:         TRACK_MENU_X - 1.24;
 Number TRACK_BTN_HALF_W:       0.17; // at most half the buttons spacing, so the hitboxes dont overlap
@@ -12,7 +13,7 @@ Number TRACK_ACTIONS_X:        TRACK_MENU_X - 1.755; // Team/Copy/Hide/Delete te
 Number TRACK_DELETE_ALL_ROW: MAX_TRACKS + 0.5;
 Number TRACK_BUDGET_Y:       -0.80; // centered on screen, not with the menu
 
-// <FG> tag colors of the Team/Hide/Delete text: hover (OPT_HOVER_COLOR), white, red, gray
+// <FG> tag colors of the Team/Copy/Hide/Delete text: hover (OPT_HOVER_COLOR), white, red, gray
 String HEX_HOVER: "44BAFFFF";
 String HEX_WHITE: "FFFFFFFF";
 String HEX_RED:   "FF0000FF";
@@ -20,16 +21,17 @@ String HEX_GRAY:  "808080FF";
 
 playervar Number[] trackMenuTexts;
 playervar String[] trackLabels;
-playervar String[] trackActions;     // the Team, Hide and Delete buttons of each row, one text colored with <FG> tags
-playervar Boolean trackLabelsFresh;  // set false wherever a track's length, hero, hidden state or the focus changes
+playervar String[] trackActions;     // the Team, Copy, Hide and Delete buttons of each row, one text colored with <FG> tags
+playervar Boolean trackLabelsFresh;  // set false wherever a track's length, hero, hidden state, the focus or the copied track changes
 playervar Number trackLabelsHover!;  // hovered and confirmId the action strings were built for
 playervar Number trackLabelsConfirm!;
+playervar Number trackClipboard!;    // the copied track + 1, an empty row's Paste button pastes it. 0 when nothing is copied
 
 // a hovered or confirmed id as the action strings show it, hovering anything else (but Delete All) doesnt rebuild them
-Number ActionHit(Number id): IsInRange(id, HIT_TEAM, HIT_DELETE + MAX_TRACKS - 1) ? id : Ctrl.None;
+Number ActionHit(Number id): IsInRange(id, HIT_TEAM, HIT_COPY + MAX_TRACKS - 1) ? id : Ctrl.None;
 
 // the row labels are built here, a formatted string in a text takes seconds to show.
-// the Team/Hide/Delete strings also follow the hover and confirmation while the menu is open. loop counts with tickI, no wait before the end
+// the Team/Copy/Hide/Delete strings also follow the hover and confirmation while the menu is open. loop counts with tickI, no wait before the end
 rule: "track menu labels"
 Event.OngoingPlayer
 if (trackMenuOpen)
@@ -61,13 +63,19 @@ if (!trackLabelsFresh || ActionHit(hovered) != trackLabelsHover || ActionHit(con
     trackLabelsConfirm = ActionHit(confirmId);
 
     for (tickI = 0; tickI < MAX_TRACKS; tickI++)
-        trackActions[tickI] = <"<0>FG<6>><7><3><0>FG<1>><2><3><0>FG<4>><5>", // this is disgusting
+        trackActions[tickI] = <"<0>FG<8>><9><2><0>FG<1>><7><2><0>FG<3>><4><2><0>FG<5>><6>", // this is disgusting
             txCharacter,
+            trackFrames[tickI] == 0 && trackClipboard == 0
+                ? HEX_GRAY
+                : trackClipboard == tickI + 1 || hovered == HIT_COPY + tickI 
+                                                    ? HEX_HOVER 
+                                                    : HEX_WHITE,
+            "         ",
             hovered == HIT_HIDE + tickI ? HEX_HOVER : HEX_WHITE,
             trackHidden[tickI] ? "Show" : "Hide",
-            "         ",
             trackFrames[tickI] == 0 ? HEX_GRAY : confirmId == HIT_DELETE + tickI ? HEX_RED : hovered == HIT_DELETE + tickI ? HEX_HOVER : HEX_WHITE,
             confirmId == HIT_DELETE + tickI ? "Delete?" : "Delete",
+            trackFrames[tickI] == 0 && trackClipboard > 0 ? "Paste" : "Copy",
             hovered == HIT_TEAM + tickI ? HEX_HOVER : trackTeam[tickI] == Side.Enemy ? HEX_RED : HEX_WHITE,
             trackTeam[tickI] == Side.Enemy ? "Enemy" : "Ally">;
 
@@ -105,7 +113,7 @@ if (trackMenuOpen)
             Spectators:     Spectators.VisibleNever);
         trackMenuTexts += LastTextID();
 
-        // Team, Hide and Delete
+        // Team, Copy, Hide and Delete
         CreateInWorldText(
             VisibleTo:      player,
             Header:         local.trackActions[Once(i)],
@@ -163,6 +171,16 @@ void TrackMenuClick(in Number id)
     else if (id < HIT_DELETE_ALL)
     {
         async! ToggleTrackTeam(id - HIT_TEAM);
+    }
+    else if (id >= HIT_COPY)
+    {
+        if (trackFrames[id - HIT_COPY] > 0)
+        {
+            trackClipboard = trackClipboard == id - HIT_COPY + 1 ? 0 : id - HIT_COPY + 1;
+            trackLabelsFresh = false;
+        }
+        else if (trackClipboard > 0)
+            async! PasteTrack(id - HIT_COPY);
     }
     else if (id >= HIT_HIDE && id < HIT_DELETE)
     {

@@ -5,6 +5,7 @@ Number HIT_TEAM:       120; // track menu team toggles, + track
 Number HIT_DELETE_ALL: 140; // track menu delete all
 Number HIT_HIDE:       150; // track menu hide buttons, + track
 Number HIT_DELETE:     170; // track menu delete buttons, + track
+Number HIT_COPY:       HIT_DELETE + MAX_TRACKS; // track menu copy buttons, + track
 Number HIT_OPT:        200; // options items, + Item
 Number HIT_CONFIRM:    300; // confirmation screen, + button
 
@@ -78,6 +79,8 @@ if (timelineOpen)
                 hoverHit = HIT_HIDE + Floor(tickJ);
             else if (Abs(hoverX - TRACK_DELETE_X) < TRACK_BTN_HALF_W && TrackFrames(Floor(tickJ), player) > 0)
                 hoverHit = HIT_DELETE + Floor(tickJ);
+            else if ((TrackFrames(Floor(tickJ), player) > 0 || trackClipboard > 0) && Abs(hoverX - TRACK_COPY_X) < TRACK_BTN_HALF_W) // copy needs a recorded track, an empty row's button is paste if a track is copied
+                hoverHit = HIT_COPY + Floor(tickJ);
         }
         else if (Abs(hoverX - TRACK_MENU_X) < TRACK_SLOT_HIT_WIDTH / 2 && IsInRange(tickJ, TRACK_DELETE_ALL_ROW, TRACK_DELETE_ALL_ROW + 1))
             hoverHit = HIT_DELETE_ALL;

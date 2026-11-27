@@ -52,6 +52,8 @@ void DeleteTrack(Number t!) playervar "track - delete track"
     trackFrames[t] = 0;
     trackLabelsFresh = false;
     trackHidden[t] = false;
+    if (trackClipboard == t + 1)
+        trackClipboard = 0;
 
     if (t == focusedTrack)
     {
@@ -60,6 +62,42 @@ void DeleteTrack(Number t!) playervar "track - delete track"
     }
 
     UpdateTimelineFrames(); // StopAll ended firstPerson's playback, "firstPerson detach" lets go once the timeline closes
+}
+
+// the copied track (trackClipboard) into empty slot t, which is focused after. the copied track is in tickK and t in tickJ after the budget check
+void PasteTrack(Number t!) playervar "track - paste"
+{
+    tickK = trackClipboard - 1;
+    trackClipboard = 0;
+    trackLabelsFresh = false;
+    if (recording || tracksBusy || trackFrames[tickK] == 0) // take and export also use recTake
+        return;
+
+    tickJ = trackFrames[tickK];
+    for (tickI = 0; tickI < MAX_TRACKS; tickI++)
+        tickJ += trackFrames[tickI];
+
+    if (tickJ > MAX_TOTAL_SAMPLES)
+    {
+        SmallMessage(player, "Not enough budget to allow pasting!");
+        return;
+    }
+
+    tickJ = t;
+    StopAll();
+    SelectTrack(tickJ);
+    LoadTrack(tickK);
+    trackStart[tickJ] = recStart;
+    trackFrames[tickJ] = recFrames;
+    trackHero[tickJ] = trackHero[tickK];
+    trackTeam[tickJ] = trackTeam[tickK];
+    trackHidden[tickJ] = false; // a hidden empty slot would give a copy without a bot
+
+    LoadTrackStage(tickK);
+    ClearTrack(tickJ);
+    AppendTrackStage(tickJ);
+    recTake = [];
+    SpawnIdleTrackBot(tickJ);
 }
 
 void DeleteAllTracks() playervar "track - delete all tracks"
