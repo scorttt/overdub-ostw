@@ -322,7 +322,7 @@ if (TRACK_IDS.IsTrueForAny(t => (trackFrames[t] > 0 && (timelineOpen || closing)
             {
                 CreateInWorldText(
                     VisibleTo:      TimelineVisible() && local.trackFrames[Once(i)] > 0 ? local : null,
-                    Header:         "┃",
+                    Header:         s != 1 ? "[" : "]",
                     Position:       UiPos(FrameToTrackX(Max(TrackStart(Once(i)) + Once(s) * TrackFrames(Once(i)), 0)), Ui.Seeker, 0.0080),
                     Scale:          1.90,
                     TextColor:      local.dragTarget == Drag.Track && local.slideTrack == Once(i)

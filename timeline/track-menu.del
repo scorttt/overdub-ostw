@@ -104,10 +104,7 @@ if (trackMenuOpen)
             Header:         local.trackLabels[Once(i)],
             Position:       RenderPosOf(TRACK_MENU_X, TRACK_MENU_TOP_Y - (Once(i)) * TRACK_MENU_SPACING),
             Scale:          1.5,
-            TextColor:      IsHovered(Once(HIT_TRACK + i)) ? OPT_HOVER_COLOR
-                                : local.focusedTrack == Once(i)
-                                    ? Color.White
-                                    : Color.Gray,
+            TextColor:      IsHovered(Once(HIT_TRACK + i)) ? OPT_HOVER_COLOR : Once(TRACK_COLORS[i]),
             Reevaluation:   InworldTextRev.VisibleToPositionStringAndColor,
             Clipping:       Clipping.DoNotClip,
             Spectators:     Spectators.VisibleNever);

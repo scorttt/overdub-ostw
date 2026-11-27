@@ -68,11 +68,11 @@ Boolean[] CtrlEnabledNow(Boolean canLoop):
     ];
 
 // button text color, also used for rewinding/fast forwarding
-Color ButtonColor(Number | Ctrl id, Boolean active = false):
+Color ButtonColor(Number | Ctrl id, Boolean active = false, Color idle = Color.White):
     IsHovered(id) || active
         ? BluePulse()
         : local.ctrlEnabled[id]
-            ? Color.White
+            ? idle
             : DisabledColor();
 
 // button positions and hitboxes by Ctrl, and the texts of buttons with a fixed label. arrays, a call per button costs more elements
@@ -86,7 +86,9 @@ rule: "init buttons"
     Number[] scales! = [2,      2,      1.75,   2,      2,       2,         2,         1.5,       2,      2,      2,           1.5,           2,      2,      1.5,           1.5,               2,         2];
 
     for (Number k! = 0; k < labels.Length; k++)
+    {
         if (labels[k] != "")
+        {
             CreateInWorldText(
                 VisibleTo:      TimelineVisible() ? local : null,
                 Header:         Once(k) == Ctrl.Record && !local.recording && local.canRetake && (!local.recordArmed || local.punchFrame != WHOLE_TAKE)
@@ -99,10 +101,15 @@ rule: "init buttons"
                                     : Once(k) == Ctrl.Loop && !IsHovered(Ctrl.Loop) && local.ctrlEnabled[Ctrl.Loop] && local.loopPlayback
                                         ? Color.Green
                                         : ButtonColor(Once(k),
-                                            Once(k) >= Ctrl.Rewind && (local.playMode == Once(k) || local.firstPersonPaused == Once(k))),
+                                            Once(k) >= Ctrl.Rewind && (local.playMode == Once(k) || local.firstPersonPaused == Once(k)),
+                                            Once(k) >= Ctrl.PrevTrack
+                                                ? TRACK_COLORS[(local.focusedTrack + Once(k == Ctrl.PrevTrack ? MAX_TRACKS - 1 : 1)) % MAX_TRACKS]
+                                                : Color.White),
                 Reevaluation:   InworldTextRev.VisibleToPositionStringAndColor,
                 Clipping:       Clipping.DoNotClip,
                 Spectators:     Spectators.VisibleNever);
+        }
+    }
 
     labels = [];
     scales = [];
@@ -164,7 +171,7 @@ rule: "create button texts"
         Header:         <"Track <0>", local.focusedTrack + 1>,
         Position:       CtrlPos(Ctrl.Track),
         Scale:          1.5,
-        TextColor:      ButtonColor(Ctrl.Track),
+        TextColor:      ButtonColor(Ctrl.Track, false, TRACK_COLORS[local.focusedTrack]),
         Reevaluation:   InworldTextRev.VisibleToPositionStringAndColor,
         Clipping:       Clipping.DoNotClip,
         Spectators:     Spectators.VisibleNever);
