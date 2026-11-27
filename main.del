@@ -14,6 +14,7 @@ import "timeline/drag.del";
 import "timeline/track-menu.del";
 
 import "recording/storage.del";
+import "recording/retake.del";
 import "recording/recording.del";
 
 import "playback/playback.del";

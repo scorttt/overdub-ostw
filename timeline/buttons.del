@@ -270,6 +270,7 @@ void ActivateCtrl(Number | Ctrl ctrl) playervar "tl - selection handler"
 
             punchFrame = canRetake ? currFrame : WHOLE_TAKE; // the countdown takes the retake's frame from the playhead, it can be seeked meanwhile
             recordArmed = true;
+            punchTpFrame = -1; // "retake teleport" puts the player at the spot
             break;
         case Ctrl.Track:
             trackMenuOpen = !trackMenuOpen;

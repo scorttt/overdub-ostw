@@ -12,7 +12,8 @@ void ApplyMovementState() playervar "noclip - apply movement"
     Boolean noclip! = OptOn(Opt.Noclip) && !firstPerson;
 
     if (!firstPerson)
-        SetGravity(player, noclip ? 0 : 100);
+        SetGravity(player, noclip || punchHeld ? 0 : 100);
+
     SetMoveSpeed(player, noclip || MoveLocked() || (firstPerson && !botDriven) ? 0 : 100);
 
     if (noclip && OptOn(Opt.NoclipNoCollision))

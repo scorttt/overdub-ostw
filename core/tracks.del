@@ -34,6 +34,10 @@ void SelectTrack(Number t!) playervar "track - select track"
     if (t == focusedTrack)
         return;
 
+    // an armed retake belongs to the track it was armed on
+    if (recordArmed && punchFrame != WHOLE_TAKE)
+        recordArmed = false;
+
     // playback keeps going, with "Play all tracks" off the previous track holds where it was
     if (playbackActive)
         trackHold[focusedTrack] = currFrame;

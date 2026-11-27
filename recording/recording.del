@@ -208,57 +208,16 @@ if (Health() != RecHealth())
 Number REC_COUNTDOWN: 3;
 playervar Number recCount!; // seconds left of the countdown, shown in the time elapsed text. 0 while not counting
 playervar Boolean preRolling!;  // the other tracks play during the countdown, all of it or its last CORRECT_LEAD ticks
-Number PUNCH_POS_RADIUS: 0.50;
-Number PUNCH_AIM_DIST:   10;
-Number PUNCH_AIM_SIZE:   0.05; // sphere radius per meter
-
-Number WHOLE_TAKE: -1; // punchFrame of a whole take, a retake's is the frame it starts at
-playervar Number punchFrame;
-playervar Vector punchPos;
-playervar Vector punchDir!;
-playervar Vector punchAim!;
-playervar Number punchAimR!;
-playervar Number punchHealth!;
-playervar Boolean punchAir!; // the recording is in the air at that frame, the player is held at that spot until the recording actually starts, then let go at the recorded velocity
-playervar Vector punchVel!;
-playervar Boolean punchLocked!;
-playervar Boolean canRetake!;
-
-Number TakeStart(Player p = player): p.punchFrame == WHOLE_TAKE ? p.recStart : p.punchFrame;
-Boolean ArmedRetake(Player p = player): p.canRetake && p.punchFrame != WHOLE_TAKE; // the armed take is a retake, only used while recordArmed
-Number RetakeStart(Player p = player): Min(p.currFrame, p.recStart + p.recFrames - 1);  // "cursor hover" keeps canRetake for the Record button, "record countdown" checks again when the timeline is closed
-Boolean RetakeKeepsFrames(): HasRecording() && currFrame > recStart; // from the track's start (or with no track) nothing would be kept
-Boolean RetakeHeroMatches(): HeroOf() == trackHero[focusedTrack];
-Boolean RetakeInTrim(): recStart + recFrames > trimStart; // a track that ends before the trim start would be retaken outside the trim
-Boolean PunchInPlace(): DistanceBetween(Vector(PosOf().X, 0, PosOf().Z), Vector(punchPos.X, 0, punchPos.Z)) <= PUNCH_POS_RADIUS;
-Boolean PunchAimed(): DistanceBetween(EyePos() + Facing() * DistanceBetween(EyePos(), punchAim), punchAim) <= punchAimR;
-Boolean PunchLinedUp(): PunchInPlace() && PunchAimed();
 
 rule: "record countdown"
 Event.OngoingPlayer
 if (recordArmed)
 if (!timelineOpen)
 {
-    // a retake WAS armed, so focus, playhead, or trim could have changed
-    if (punchFrame != WHOLE_TAKE)
-    {
-        // whole take since nothing would be kept
-        if (!RetakeKeepsFrames())
-            punchFrame = WHOLE_TAKE;
-        // a whole take would replace the track the retake was meant to keep
-        else if (!RetakeHeroMatches())
-        {
-            recordArmed = false;
-            SmallMessage(player, <"Track <0> needs <1>, change hero or replace the whole track", focusedTrack + 1, trackHero[focusedTrack]>);
-            return;
-        }
-        else if (!RetakeInTrim())
-        {
-            recordArmed = false;
-            SmallMessage(player, <"Track <0> ends before the trim start, move it or replace the whole track", focusedTrack + 1>);
-            return;
-        }
-    }
+    PunchCheck();
+
+    if (!recordArmed)
+        return;
 
     // take replaces the focused track, only other tracks count toward MAX_TOTAL_SAMPLES
     recOthers = 0;
@@ -289,65 +248,12 @@ if (!timelineOpen)
 
     Number from! = currFrame;
     Number target = OptOn(Opt.RecFromTrimStart) ? trimStart : currFrame; // take start
-    Boolean guides! = punchFrame != WHOLE_TAKE;
-    Any posRing!;
-    Any posSphere!;
-    Any aimSphere!;
-    Number hint!;
 
-    if (guides)
-    {
-        // a retake starts at the playhead within the track
-        target = RetakeStart();
-        punchFrame = target;
-        Number s! = target - recStart;
-        ReadTrackSample(focusedTrack, s);
-        punchPos = readPos;
-        punchDir = LookDir(readLook);
-        punchHealth = readLook.Z;
-        punchAir = !HasBit(readCtrl.Y, Bit.Ground);
-        TeleportFacing(punchPos, punchDir);
+    PunchBegin(); // a retake's spot and guides
 
-        // hold the player in air
-        if (punchAir)
-        {
-            ReadTrackSample(focusedTrack, Min(s + 1, recFrames - 1));
-            punchVel = (readPos - punchPos) / delta;
-            StartForcingPlayerPosition(player, punchPos, false); // for some reason this makes the player's aim feel floaty - dont care!
-        }
+    if (punchGuides)
+        target = punchFrame;
 
-        // a playhead past the track's end is moved to its last frame
-        if (currFrame >= recStart + recFrames)
-        {
-            tickK = target;
-            FrameText();
-            SmallMessage(player, <"Retaking from the end of track <0> (<1>)", focusedTrack + 1, frameText>);
-        }
-
-        // the sphere sits along the recorded aim from the player's eye height at the spot, backed off the first surface until it just touches it
-        Vector eye! = punchPos + EyePos() - PosOf();
-        Vector aimEnd! = eye + punchDir * PUNCH_AIM_DIST;
-        Number headOn! = Max(Abs(Dot(punchDir, RayNormal(eye, aimEnd, null))), 0.25); // 1 when nothing's hit, the normal then points back along the ray
-        Number dist! = DistanceBetween(eye, RayHit(eye, aimEnd, null)) * headOn / (headOn + PUNCH_AIM_SIZE);
-        punchAim = eye + punchDir * dist;
-        punchAimR = dist * PUNCH_AIM_SIZE;
-
-        CreateEffect(player, Effect.Ring, PunchInPlace() ? Color.Green : Color.White, punchPos, PUNCH_POS_RADIUS, EffectRev.VisibleToPositionRadiusAndColor);
-        posRing = LastCreatedEntity();
-        CreateEffect(player, Effect.Sphere, PunchInPlace() ? Color.Green : Color.White, punchPos, PUNCH_POS_RADIUS / 4, EffectRev.VisibleToPositionRadiusAndColor);
-        posSphere = LastCreatedEntity();
-        CreateEffect(player, Effect.Sphere, PunchAimed() ? Color.Green : Color.White, punchAim, punchAimR, EffectRev.VisibleToPositionRadiusAndColor);
-        aimSphere = LastCreatedEntity();
-        CreateHudText(
-            VisibleTo:      player,
-            Text:           punchAir ? " \n\n\nAim at the sphere to start the retake countdown" : " \n\n\nStay in the ring while aiming at the sphere to start the retake countdown",
-            Location:       Location.Top,
-            SortOrder:      1,
-            TextColor:      Color.White,
-            Reevaluation:   HudTextRev.VisibleTo,
-            Spectators:     Spectators.VisibleNever);
-        hint = LastTextID();
-    }
     // replacing a track starts from the same spot, before the countdown so it's spent there. reads the old samples, take clears them
     else if (OptOn(Opt.TeleportOnRecord) && HasRecording())
     {
@@ -361,15 +267,19 @@ if (!timelineOpen)
     Boolean full! = false; // the whole pre-roll
     while (recordArmed && !timelineOpen && (end == -1 || Time() < end))
     {
-        tickJ = !guides || PunchLinedUp();
+        tickJ = !punchGuides || PunchLinedUp();
         if (tickJ && end == -1)
         {
             end = Time() + REC_COUNTDOWN;
+            
             // only with a whole countdown of timeline before the take
             full = OptOn(Opt.PreRoll) && OptOn(Opt.PlayWhileRecording) && target >= REC_COUNTDOWN / delta;
+
             preRolling = full;
-            punchLocked = guides;
+            punchLocked = punchGuides;
             ApplyMovementState();
+            if (punchHeld)
+                StopMomentum(); // a floating player would drift on
         }
         else if (!tickJ && end != -1)
         {
@@ -404,21 +314,7 @@ if (!timelineOpen)
         }
         MinWait();
     }
-    if (guides)
-    {
-        DestroyEffect(posRing);
-        DestroyEffect(posSphere);
-        DestroyEffect(aimSphere);
-        DestroyHudText(hint);
-
-        if (punchAir)
-        {
-            StopForcingPlayerPosition();
-
-            if (recordArmed && !timelineOpen)
-                MinWait();
-        }
-    }
+    punchGuides = false;
     recCount = 0;
     preRolling = false;
     punchLocked = false; // applied by StartRecording or below
@@ -426,15 +322,7 @@ if (!timelineOpen)
     // still armed with the timeline closed, so the countdown ran out
     if (recordArmed && !timelineOpen)
     {
-        // lined up within the ring and sphere, so correct whatever error is there. a player that's held in the air is let go at the forward differenced velocity
-        if (guides && punchAir)
-        {
-            SetFacing(player, punchDir, Relative.ToWorld);
-            ApplyImpulse(player, punchVel, Mag(punchVel), Relative.ToWorld, ContraryMotion.Cancel);
-        }
-        else if (guides)
-            TeleportFacing(punchPos, punchDir);
-
+        PunchGo();
         currFrame = target;
         StartRecording();
     }

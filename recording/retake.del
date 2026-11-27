@@ -1,0 +1,268 @@
+import "../main.del";
+
+Number PUNCH_POS_RADIUS: 0.50;
+Number PUNCH_AIM_DIST:   10;
+Number PUNCH_AIM_SIZE:   0.05; // sphere radius per meter
+Number PUNCH_DROP:       100;  // how far below a mid-air spot ground is looked for
+Number PUNCH_GROUND_TOL: 1;    // ground further than this from walkable ground cant be reached
+Number PUNCH_RING_BEAMS: 12;   // beams around the ring
+Number PUNCH_RING_OVERLAP: 0.50; // share of a beam's arc each beam reaches past its corners, a beam's ends fade out and left gaps
+Number PUNCH_PUSH_MAX:   2;    // how far the focused track's bot may have pushed a teleported player off the spot
+
+// corner k of the ring's beams, a little above the ground so it isnt hidden in it
+Vector RingPoint(Number k): punchRing + Vector(PUNCH_POS_RADIUS * CosDeg(k * 360 / PUNCH_RING_BEAMS), 0.1, PUNCH_POS_RADIUS * SinDeg(k * 360 / PUNCH_RING_BEAMS));
+
+Number WHOLE_TAKE: -1; // punchFrame of a whole take, a retake's is the frame it starts at
+playervar Number punchFrame;
+playervar Vector punchPos;
+playervar Vector punchDir!;
+playervar Vector punchAim!;
+playervar Number punchAimR!;
+playervar Number punchHealth!;
+playervar Boolean punchAir!; // the recording is in the air at that frame, the player floats there until the recording actually starts, then is let go at the recorded velocity
+playervar Vector punchRing; // the ring, on walkable ground. under a mid-air spot, or the nearest walkable ground when nothing below can be reached
+playervar Boolean punchHeld; // floating at a mid-air retake's spot without gravity, free to move away. kept while the timeline is open
+playervar Boolean punchLiftReady!; // the ring lifts the player only after they stood outside it, so landing in it doesnt lift them again
+playervar Vector punchVel!;
+playervar Boolean punchLocked!;
+playervar Boolean punchGuides!; // "record countdown" waits for a retake's lineup, "retake guides" shows it and "retake float" lifts the player
+playervar Boolean canRetake!;
+playervar Number punchTpFrame!; // the track sample "retake teleport" last put the player at (moves with a slide), -1 when the retake button arms one
+
+Number TakeStart(Player p = player): p.punchFrame == WHOLE_TAKE ? p.recStart : p.punchFrame;
+Boolean ArmedRetake(Player p = player): p.canRetake && p.punchFrame != WHOLE_TAKE; // the armed take is a retake, only used while recordArmed
+Number RetakeStart(Player p = player): Min(p.currFrame, p.recStart + p.recFrames - 1);  // "cursor hover" keeps canRetake for the Record button, "record countdown" checks again when the timeline is closed
+Boolean RetakeKeepsFrames(): HasRecording() && currFrame > recStart; // from the track's start (or with no track) nothing would be kept
+Boolean RetakeHeroMatches(): HeroOf() == trackHero[focusedTrack];
+Boolean RetakeInTrim(): recStart + recFrames > trimStart; // a track that ends before the trim start would be retaken outside the trim
+Boolean PunchInRing(): DistanceBetween(Vector(PosOf().X, 0, PosOf().Z), Vector(punchRing.X, 0, punchRing.Z)) <= PUNCH_POS_RADIUS;
+Boolean PunchAtSpot(): DistanceBetween(PosOf(), punchPos) <= PUNCH_POS_RADIUS;
+Boolean PunchInPlace(): punchAir ? punchHeld && PunchAtSpot() : PunchInRing();
+Boolean PunchAimed(): DistanceBetween(EyePos() + Facing() * DistanceBetween(EyePos(), punchAim), punchAim) <= punchAimR;
+Boolean PunchLinedUp(): PunchInPlace() && PunchAimed();
+
+// walkable ground under p, or the nearest walkable ground when there's nothing below, or a kill volume or roof that can't be walked on
+Vector WalkableBelow(Vector p): [RayHit(p, p - Vector(0, PUNCH_DROP, 0), null)].Map(b =>
+    DistanceBetween(p, b) < PUNCH_DROP - 0.1 && DistanceBetween(NearestWalkablePos(b), b) <= PUNCH_GROUND_TOL ? NearestWalkablePos(b) : NearestWalkablePos(p)).First;
+
+// the retake's spot at the playhead, read when the retake is armed and again when the timeline closes
+void PunchSpot() playervar "rec - retake spot"
+{
+    Number s! = RetakeStart() - recStart;
+    ReadTrackSample(focusedTrack, s);
+    punchPos = readPos;
+    punchDir = LookDir(readLook);
+    punchHealth = readLook.Z;
+    punchAir = !HasBit(readCtrl.Y, Bit.Ground);
+    punchRing = punchPos;
+
+    if (punchAir)
+    {
+        ReadTrackSample(focusedTrack, Min(s + 1, recFrames - 1));
+        punchVel = (readPos - punchPos) / delta;
+        punchRing = WalkableBelow(punchPos);
+    }
+
+    // sphere sits along the recorded aim from the player's eye height at the spot, backed off the first surface until it just touches it
+    Vector eye! = punchPos + EyePos() - PosOf();
+    Vector aimEnd! = eye + punchDir * PUNCH_AIM_DIST;
+    Number headOn! = Max(Abs(Dot(punchDir, RayNormal(eye, aimEnd, null))), 0.25); // 1 when nothing's hit, the normal then points back along the ray
+    Number dist! = DistanceBetween(eye, RayHit(eye, aimEnd, null)) * headOn / (headOn + PUNCH_AIM_SIZE);
+
+    // sphere grows with distance, so rays along its edge (above, below and the sides) keep it in front of a ledge or wall if the player was aiming past it
+    Vector side! = Norm(Cross(Up(), punchDir)) * PUNCH_AIM_SIZE * PUNCH_AIM_DIST;
+    Vector vert! = Cross(punchDir, side);
+    
+    for (tickI = 0; tickI < 4; tickI++)
+        dist = Min(dist, DistanceBetween(eye, RayHit(eye, aimEnd + [side, vert, side * -1, vert * -1][tickI], null)) / (1 + PUNCH_AIM_SIZE)); // shoot me in the head
+
+    punchAim = eye + punchDir * dist;
+    punchAimR = dist * PUNCH_AIM_SIZE;
+}
+
+// floats the player, after they're teleported to the spot
+void PunchLift() playervar "rec - retake lift"
+{
+    punchHeld = true;
+    ApplyMovementState();
+    StopMomentum();
+}
+
+// lets go of a floating player, who falls unless nothing below can be walked on
+void PunchRelease() playervar "rec - retake release"
+{
+    punchHeld = false;
+    punchLiftReady = false;
+    ApplyMovementState();
+    Vector ground! = WalkableBelow(PosOf());
+    if (DistanceBetween(Vector(PosOf().X, 0, PosOf().Z), Vector(ground.X, 0, ground.Z)) > PUNCH_POS_RADIUS)
+        Teleport(player, ground);
+}
+
+rule: "retake release"
+Event.OngoingPlayer
+if (punchHeld)
+if (!recordArmed)
+{
+    PunchRelease();
+}
+
+// puts the player at an armed retake's spot when it's armed, and again whenever the playhead moves it. waits for playback and drags to end. mid air spots floats the player
+rule: "retake teleport"
+Event.OngoingPlayer
+if (recordArmed)
+if (timelineOpen)
+if (ArmedRetake())
+if (!firstPerson)
+if (!playbackActive)
+if (!IsDragging(player))
+if (RetakeStart() - recStart != punchTpFrame)
+{
+    punchTpFrame = RetakeStart() - recStart;
+    PunchSpot();
+    Teleport(player, punchPos);
+    if (punchAir)
+        PunchLift();
+    else if (punchHeld)
+    {
+        punchHeld = false;
+        ApplyMovementState();
+    }
+
+    MinWait();
+    LoopIfConditionIsTrue();
+}
+
+// "record countdown"'s start: retake was armed, so the playhead or trim could have changed. it becomes a whole take, or is disarmed
+void PunchCheck()
+{
+    if (punchFrame == WHOLE_TAKE)
+        return;
+
+    // whole take since nothing would be kept
+    if (!RetakeKeepsFrames())
+        punchFrame = WHOLE_TAKE;
+    else if (!RetakeInTrim())
+    {
+        recordArmed = false;
+        SmallMessage(player, <"Track <0> ends before the trim start, move it or replace the whole track", focusedTrack + 1>);
+    }
+}
+
+// "record countdown" reads a retake's spot at the playhead and shows the guides
+void PunchBegin()
+{
+    if (punchFrame != WHOLE_TAKE)
+    {
+        punchFrame = RetakeStart();
+        PunchSpot();
+
+        // a playhead past the track's end is moved to its last frame
+        if (currFrame >= recStart + recFrames)
+        {
+            tickK = punchFrame;
+            FrameText();
+            SmallMessage(player, <"Retaking from the end of track <0> (<1>)", focusedTrack + 1, frameText>);
+        }
+    }
+
+    if (punchFrame != WHOLE_TAKE && punchTpFrame == punchFrame - recStart && DistanceBetween(PosOf(), punchPos) <= PUNCH_PUSH_MAX)
+    {
+        TeleportFacing(punchPos, punchDir);
+
+        if (punchAir)
+            PunchLift();
+
+        WaitUntil(PunchAtSpot(), 0.5); // PosOf shows the teleport late, it would count as moving away
+    }
+    else if (punchHeld)
+        PunchRelease();
+    punchLiftReady = false;
+    punchGuides = punchFrame != WHOLE_TAKE;
+}
+
+// a retake's countdown ran out while lined up, so whatever error is there is corrected. a floating player is let go at the forward differenced velocity, gravity comes back with StartRecording
+void PunchGo()
+{
+    if (punchFrame == WHOLE_TAKE)
+        return;
+
+    TeleportFacing(punchPos, punchDir);
+    if (punchAir)
+    {
+        punchHeld = false;
+        ApplyImpulse(player, punchVel, Mag(punchVel), Relative.ToWorld, ContraryMotion.Cancel);
+    }
+}
+
+rule: "retake guides"
+Event.OngoingPlayer
+if (punchGuides)
+{
+    Any[] ringBeams! = [];
+    for (tickI = 0; tickI < PUNCH_RING_BEAMS; tickI++)
+    {
+        CreateBeamEffect(player, BeamType.BadBeam,
+            Once(RingPoint(tickI - PUNCH_RING_OVERLAP)), Once(RingPoint(tickI + 1 + PUNCH_RING_OVERLAP)),
+            PunchInPlace() ? Color.Green : Color.White, EffectRev.VisibleToPositionRadiusAndColor);
+        ringBeams += LastCreatedEntity();
+    }
+    CreateEffect(player, Effect.Sphere, PunchInPlace() ? Color.Green : Color.White, punchPos + Vector(0, 0.1, 0), PUNCH_POS_RADIUS / 4, EffectRev.VisibleToPositionRadiusAndColor);
+    Any posSphere! = LastCreatedEntity();
+    CreateEffect(player, Effect.Sphere, PunchAimed() ? Color.Green : Color.White, punchAim, punchAimR, EffectRev.VisibleToPositionRadiusAndColor);
+    Any aimSphere! = LastCreatedEntity();
+    Any beam!;
+
+    if (punchAir)
+    {
+        CreateBeamEffect(player, BeamType.GrappleBeam, punchRing, punchPos + Vector(0, 0.1, 0), Color.White, EffectRev.None);
+        beam = LastCreatedEntity();
+    }
+
+    CreateHudText(
+        VisibleTo:      player,
+        Text:           !punchAir
+                            ? " \n\n\nStand in the ring while aiming at the sphere to start the retake"
+                            : punchHeld
+                                ? " \n\n\nAim at the sphere to start the retake"
+                                : " \n\n\nGo to the ring to go to the retake's spot",
+        Location:       Location.Top,
+        SortOrder:      1,
+        TextColor:      Color.White,
+        Reevaluation:   HudTextRev.VisibleToAndString,
+        Spectators:     Spectators.VisibleNever);
+    Number hint! = LastTextID();
+
+    WaitUntil(!punchGuides, 99999);
+
+    for (tickI = 0; tickI < PUNCH_RING_BEAMS; tickI++)
+        DestroyEffect(ringBeams[tickI]);
+
+    DestroyEffect(posSphere);
+    DestroyEffect(aimSphere);
+    DestroyHudText(hint);
+    if (punchAir)
+        DestroyEffect(beam);
+}
+
+// mid-air: stepping into the ring teleports the player, moving away from it lets them fall. runs before "record countdown" checks the lineup in the same tick
+rule: "retake float"
+Event.OngoingPlayer
+if (punchGuides)
+if (punchAir)
+{
+    if (!PunchInRing() && IsOnGround())
+        punchLiftReady = true;
+
+    if (punchHeld && !PunchAtSpot() && !punchLocked)
+        PunchRelease();
+    else if (!punchHeld && punchLiftReady && PunchInRing())
+    {
+        TeleportFacing(punchPos, punchDir);
+        PunchLift();
+        WaitUntil(PunchAtSpot(), 0.5); // PosOf shows the teleport late, it would count as moving away
+    }
+
+    MinWait();
+    LoopIfConditionIsTrue();
+}
