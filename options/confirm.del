@@ -11,6 +11,7 @@ enum ConfirmBtn
 Number[] CONFIRM_X:      [0, -0.4, 0.4];
 Number[] CONFIRM_Y:      [0.22, -0.15, -0.15];
 Number[] CONFIRM_HALF_W: [0.9, 0.25, 0.25];
+String CONFIRM_GAP: "                    "; // spaces between Okay and Cancel, so they sit at their CONFIRM_X
 
 globalvar String[] EXPORT_STEPS! = [
     "1. Press Export and wait until it's done",
@@ -109,22 +110,16 @@ if (confirmItem != Item.None)
 
     CreateInWorldText(
         VisibleTo:      player,
-        Header:         isExport ? "Export" : "Okay",
-        Position:       RenderPosOf(CONFIRM_X[ConfirmBtn.Okay], CONFIRM_Y[ConfirmBtn.Okay]),
+        Header:         <"<0>FG<1>><2><3><0>FG<4>>Cancel",
+                            txCharacter,
+                            IsHovered(HIT_CONFIRM + ConfirmBtn.Okay) ? HEX_HOVER : HEX_WHITE,
+                            Once(isExport ? "Export" : "Okay"),
+                            CONFIRM_GAP,
+                            IsHovered(HIT_CONFIRM + ConfirmBtn.Cancel) ? HEX_HOVER : HEX_WHITE>,
+        Position:       RenderPosOf((CONFIRM_X[ConfirmBtn.Okay] + CONFIRM_X[ConfirmBtn.Cancel]) / 2, CONFIRM_Y[ConfirmBtn.Okay]),
         Scale:          OPT_SCALE * 1.2,
-        TextColor:      IsHovered(HIT_CONFIRM + ConfirmBtn.Okay) ? OPT_HOVER_COLOR : Color.White,
-        Reevaluation:   InworldTextRev.VisibleToPositionAndColor,
-        Clipping:       Clipping.DoNotClip,
-        Spectators:     Spectators.VisibleNever);
-    confirmTexts += LastTextID();
-
-    CreateInWorldText(
-        VisibleTo:      player,
-        Header:         "Cancel",
-        Position:       RenderPosOf(CONFIRM_X[ConfirmBtn.Cancel], CONFIRM_Y[ConfirmBtn.Cancel]),
-        Scale:          OPT_SCALE * 1.2,
-        TextColor:      IsHovered(HIT_CONFIRM + ConfirmBtn.Cancel) ? OPT_HOVER_COLOR : Color.White,
-        Reevaluation:   InworldTextRev.VisibleToPositionAndColor,
+        TextColor:      Color.White,
+        Reevaluation:   InworldTextRev.VisibleToPositionAndString,
         Clipping:       Clipping.DoNotClip,
         Spectators:     Spectators.VisibleNever);
     confirmTexts += LastTextID();
