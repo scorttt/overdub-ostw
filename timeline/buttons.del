@@ -45,13 +45,13 @@ Boolean IsHovered(Number | Ctrl id): local.hovered == id;
 Boolean ShowsPause(Player p = player): p.playbackActive && p.firstPersonPaused == PlayMode.None;
 
 // which buttons can be clicked, by Ctrl. cursor hover sets ctrlEnabled from it every tick, while recording only Record stays
-Boolean[] CtrlEnabledNow():
+Boolean[] CtrlEnabledNow(Boolean canLoop):
     [
-        (!playbackActive && CanPlay()) || firstPersonPaused != PlayMode.None,                       // Play
+        (!playbackActive && (currFrame != trimEnd || canLoop)) || firstPersonPaused != PlayMode.None, // Play (CanPlay)
         ShowsPause(),                                                                               // Pause
         playbackActive,                                                                             // Stop
-        currFrame != trimStart,                                                                     // Rewind
-        currFrame != trimEnd,                                                                       // Forward
+        canLoop || currFrame != trimStart,                                                          // Rewind
+        canLoop || currFrame != trimEnd,                                                            // Forward
         currFrame != trimStart,                                                                     // PrevFrame
         currFrame != trimEnd,                                                                       // NextFrame
         true,                                                                                       // Options
@@ -231,7 +231,7 @@ void ActivateCtrl(Number | Ctrl ctrl) playervar "tl - selection handler"
                 break;
             }
 
-            framesToSkip = tickJ == ctrl ? Min(framesToSkip * 2, 16) : 2;
+            framesToSkip = tickJ == ctrl ? Min(framesToSkip * 2, 8) : 2;
 
             if (currFrame != (ctrl == Ctrl.Forward ? trimEnd : trimStart) || CanLoop())
             {

@@ -42,7 +42,8 @@ if (timelineOpen)
 
     hoverHit = Ctrl.None;
 
-    ctrlEnabled = CtrlEnabledNow().Map((on, i) => on && (!recording || i == Ctrl.Record));
+    tickK = CanLoop();
+    ctrlEnabled = CtrlEnabledNow(tickK).Map((on, i) => on && (!recording || i == Ctrl.Record));
 
     // a playhead past the track's end retakes from its last frame
     tickJ = RetakeKeepsFrames() && RetakeInTrim() && RetakeHeroMatches();
