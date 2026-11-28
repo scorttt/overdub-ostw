@@ -10,6 +10,7 @@ rule: "firstPerson attach"
 Event.OngoingPlayer
 if (!firstPerson)
 if (!firstPersonLeft)
+if (!trimming) // trim mode plays with the timeline open, which pauses it
 if (playMode != PlayMode.None)
 if (playMode <= PlayMode.Play)
 if (HasRecording())

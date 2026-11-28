@@ -87,6 +87,7 @@ if (player == host) // the track storage is global, only the host records
 if (!tracksBusy) // recording shares the import samples
 if (!HasBit(botButtons, Bit.Reload))
 if (!HasBit(botButtons, Bit.Interact)) // not a recorded reload or interact while playing FirstPerson, IsButtonHeld sees those holds
+if (!trimming)
 if (IsReloadHeld())
 if (IsInteractHeld())
 {

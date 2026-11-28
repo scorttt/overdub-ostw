@@ -15,6 +15,30 @@ Number TrackFrames(Number t, Player p = local): p.trackFrames[t];
 Number TrackEnd(Number t, Player p = local): TrackStart(t, p) + TrackFrames(t, p);
 Number TrackCount(): trackFrames.Filter(f => f > 0).Length;
 
+// trim mode keeps the focused track's frames from trimStart until trimEnd, so playback stays between its brackets. cut only once confirmed,
+// the trim handles come back after
+playervar Boolean trimming!;
+playervar Number trimStartWas!;
+playervar Number trimEndWas!;
+Number TRIM_MAX_LOAD: 125; // server load % the cut waits under between chunks, below the import's so a long cut doesnt stutter the server
+
+// a track's brackets as drawn, the focused track's trim while trimming
+Number MarkerStart(Number t, Player p = local): p.trimming && t == p.focusedTrack ? p.trimStart : TrackStart(t, p);
+Number MarkerEnd(Number t, Player p = local): p.trimming && t == p.focusedTrack ? p.trimEnd : TrackEnd(t, p);
+
+Boolean TrimChanged(Player p = player): p.trimStart != Max(p.recStart, 0) || p.trimEnd != p.recStart + p.recFrames;
+
+// what can be clicked in trim mode: playback, Delete Track and the trim button
+Boolean TrimAllows(Number | Ctrl id): id <= Ctrl.NextFrame || [Ctrl.Track, Ctrl.Trim, Ctrl.Loop].Contains(id);
+
+void EndTrim() playervar "track - end trim"
+{
+    trimming = false;
+    trimStart = trimStartWas;
+    trimEnd = trimEndWas;
+    UpdateTimelineFrames(); // fits the timeline to a cut, and the playhead to the trim handles
+}
+
 void LoadTrack(in Number t)
 {
     recStart = trackStart[t];
@@ -103,6 +127,49 @@ void PasteTrack(Number t!) playervar "track - paste"
     AppendTrackStage(tickJ);
     recTake = [];
     SpawnIdleTrackBot(tickJ);
+}
+
+// cuts the focused track down to trimStart until trimEnd and ends trim mode. a cut at the start shifts every chunk. its first frame on
+// the timeline as the start cuts nothing, not even a part slid before frame 0
+void TrimTrack() playervar "track - trim"
+{
+    StopAll();
+
+    tracksBusy = true; // track is staged in recTake over a few ticks
+
+    Number k! = trimStart > Max(recStart, 0) ? trimStart - recStart : 0; // samples cut from the start
+    Number q! = Floor(k / CHUNK_SIZE);
+    Number r! = k % CHUNK_SIZE;
+    Number n! = trimEnd - recStart - k; // samples kept
+
+    // chunk i takes the rest of chunk q + i and the start of the next, only reading chunks after i
+    // the last one's next chunk can be past the stored ones, the outer Slice drops what that reads. with no cut at the start only the last chunk changes
+    LoadTrackStage(focusedTrack);
+    for (Number i! = k ? 0 : Floor(n / CHUNK_SIZE); i * CHUNK_SIZE < n; i++)
+    {
+        tickI = q + i; // plain copies, the write repeats them for each Sample field
+        tickJ = r;
+        tickK = n - i * CHUNK_SIZE;
+        recTake[i] = (recTake[tickI].Slice(tickJ, CHUNK_SIZE) + recTake[tickI + 1].Slice(0, tickJ)).Slice(0, tickK);
+
+        // writing copies the track
+        MinWait();
+        if (ServerLoad() > TRIM_MAX_LOAD)
+            WaitUntil(ServerLoad() < TRIM_MAX_LOAD, 2);
+    }
+    recTake = recTake.Slice(0, Ceil(n / CHUNK_SIZE));
+    ClearTrack(focusedTrack);
+    AppendTrackStage(focusedTrack);
+    recTake = [];
+
+    trackStart[focusedTrack] = recStart + k;
+    trackFrames[focusedTrack] = n;
+    LoadTrack(focusedTrack);
+    trackLabelsFresh = false;
+    trackBot[focusedTrack].botWinC = -2; // changed starts alone doesnt reload a window, and the samples moved
+    botWinC = -2; // FirstPerson's window
+    tracksBusy = false;
+    EndTrim();
 }
 
 void DeleteAllTracks() playervar "track - delete all tracks"

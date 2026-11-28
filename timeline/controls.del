@@ -17,6 +17,7 @@ playervar Number confirmId; // id clicked once and waiting for a second click, c
 playervar Number hoverX;
 playervar Number hoverY;
 playervar Number hoverHit;    // hovered id this tick
+Number TRIM_DELETE_EXTRA_W: 0.15; // the track button reads Delete Track N in trim mode
 
 
 Number CAM_TURN_WAIT:      0.25; // seconds a turn gets to land
@@ -44,7 +45,7 @@ if (timelineOpen)
     hoverHit = Ctrl.None;
 
     tickK = CanLoop();
-    ctrlEnabled = CtrlEnabledNow(tickK).Map((on, i) => on && (!recording || i == Ctrl.Record));
+    ctrlEnabled = CtrlEnabledNow(tickK).Map((on, i) => on && (!recording || i == Ctrl.Record) && (!trimming || TrimAllows(i)));
 
     // a playhead past the track's end retakes from its last frame
     tickJ = RetakeKeepsFrames() && RetakeInTrim() && RetakeHeroMatches();
@@ -59,7 +60,7 @@ if (timelineOpen)
             {
                 if (ctrlEnabled[tickI]
                     && (CTRL_Y[tickI] < LOWER_ROW_TEXT_Y) == (hoverY <= LOWER_ROW_Y_MAX)
-                    && Abs(hoverX - CTRL_X[tickI]) <= CTRL_HALF_W[tickI])
+                    && Abs(hoverX - CTRL_X[tickI]) <= CTRL_HALF_W[tickI] + (trimming && tickI == Ctrl.Track ? TRIM_DELETE_EXTRA_W : 0))
                 {
                     hoverHit = tickI;
                     break;
@@ -123,6 +124,19 @@ if (timelineOpen)
     tickK = Drag.None; // hovered trim handle or track label
     if (dragTarget >= Drag.LHandle)
         tickK = dragTarget;
+
+    // trim mode only grabs the focused track's brackets, in the seeker's row. the nearer one wins where they overlap
+    else if (trimming)
+    {
+        if (!tracksBusy && IsInRange(hoverY, SEEKER_Y_MIN, SEEKER_Y_MAX)) // not while the cut is running
+        {
+            tickI = Abs(hoverX - TrimStartX(player));
+            tickJ = Abs(hoverX - TrimEndX(player));
+
+            if (Min(tickI, tickJ) <= HANDLE_HALF_W)
+                tickK = tickI < tickJ ? Drag.TrimFrom : Drag.TrimTo;
+        }
+    }
 
     else if (!IsDragging(player) && !recording)
     {

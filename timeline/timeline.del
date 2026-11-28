@@ -19,7 +19,9 @@ enum Drag
     Seeker,
     LHandle,
     RHandle,
-    Track   // a track's label, slides the track
+    Track,  // a track's label, slides the track
+    TrimFrom, // the focused track's brackets in trim mode
+    TrimTo
 }
 
 Number TRACK_HALF:  2.60; // timeline track spans -TRACK_HALF to TRACK_HALF on the menu x axis
@@ -203,7 +205,7 @@ rule: "create timeline text"
     // the playhead (s = 0) on the bar, the trim start (1) and end (2) handles above it
     for (Number s! = 0; s < 3; s++)
         CreateInWorldText(
-            VisibleTo:      TimelineVisible() && TimelineHasFrames(local) && !local.recording ? local : null,
+            VisibleTo:      TimelineVisible() && TimelineHasFrames(local) && !local.recording && (Once(s) == 0 || !local.trimming) ? local : null, // the brackets are the trim handles in trim mode
             Header:         s == 0 ? "┃" : "▼",
             Position:       UiPos(FrameToTrackX([local.currFrame, local.trimStart, local.trimEnd][Once(s)]), Once(s) == 0 ? Ui.Seeker : Ui.Handles),
             Scale:          s == 0 ? 2.75 : 2,
@@ -312,7 +314,9 @@ if (TRACK_IDS.IsTrueForAny(t => (trackFrames[t] > 0 && (timelineOpen || closing)
                 Scale:          1,
                 TextColor:      local.focusedTrack == Once(tickJ)
                                     ? Color.White
-                                    : Once(TRACK_COLORS[tickJ]),
+                                    : local.trimming
+                                        ? DisabledColor()
+                                        : Once(TRACK_COLORS[tickJ]),
                 Reevaluation:   InworldTextRev.VisibleToPositionAndColor,
                 Clipping:       Clipping.DoNotClip,
                 Spectators:     Spectators.VisibleNever);
@@ -323,13 +327,19 @@ if (TRACK_IDS.IsTrueForAny(t => (trackFrames[t] > 0 && (timelineOpen || closing)
                 CreateInWorldText(
                     VisibleTo:      TimelineVisible() && local.trackFrames[Once(tickJ)] > 0 ? local : null,
                     Header:         tickK != 1 ? "[" : "]",
-                    Position:       UiPos(FrameToTrackX(Max(TrackStart(Once(tickJ)) + Once(tickK) * TrackFrames(Once(tickJ)), 0)), Ui.Seeker, 0.0080),
+                    Position:       UiPos(FrameToTrackX(Max(local.trimming && Once(tickJ) == local.focusedTrack
+                                                        ? [local.trimStart, local.trimEnd][Once(tickK)]
+                                                        : TrackStart(Once(tickJ)) + Once(tickK) * TrackFrames(Once(tickJ)), 0)), Ui.Seeker, 0.0080),
                     Scale:          1.90,
-                    TextColor:      local.dragTarget == Drag.Track && local.slideTrack == Once(tickJ)
-                                        ? OPT_HOVER_COLOR
-                                        : local.focusedTrack == Once(tickJ)
-                                            ? Color.White
-                                            : Once(TRACK_COLORS[tickJ]),
+                    TextColor:      local.trimming
+                                        ? local.focusedTrack == Once(tickJ)
+                                            ? CustomColor(255, 0, 0, 255)
+                                            : DisabledColor()
+                                        : local.dragTarget == Drag.Track && local.slideTrack == Once(tickJ)
+                                            ? OPT_HOVER_COLOR
+                                            : local.focusedTrack == Once(tickJ)
+                                                ? Color.White
+                                                : Once(TRACK_COLORS[tickJ]),
                     Reevaluation:   InworldTextRev.VisibleToPositionAndColor,
                     Clipping:       Clipping.DoNotClip,
                     Spectators:     Spectators.VisibleNever);
@@ -363,9 +373,9 @@ rule: "track times"
 Event.OngoingPlayer
 if (timelineOpen)
 if (!recording)
-if (TRACK_IDS.IsTrueForAny(t => Max(TrackStart(t, player), 0) != timeFrames[t] || TrackEnd(t, player) != timeFrames[t + MAX_TRACKS]))
+if (TRACK_IDS.IsTrueForAny(t => Max(MarkerStart(t, player), 0) != timeFrames[t] || MarkerEnd(t, player) != timeFrames[t + MAX_TRACKS]))
 {
-    timeFrames = TRACK_IDS.Map(t => Max(TrackStart(t, player), 0)).Append(TRACK_IDS.Map(t => TrackEnd(t, player)));
+    timeFrames = TRACK_IDS.Map(t => Max(MarkerStart(t, player), 0)).Append(TRACK_IDS.Map(t => MarkerEnd(t, player)));
     trackTimes = timeFrames.Map(f => FormattedFrameToSec(f));
     MinWait();
     LoopIfConditionIsTrue();
@@ -408,6 +418,30 @@ if (timelineOpen)
     LoopIfConditionIsTrue();
 }
 
+playervar Number trimWarnText!;
+rule: "trim warning"
+Event.OngoingPlayer
+if (trimming)
+{
+    CreateInWorldText(
+        VisibleTo:      player,
+        Header:         !TrimChanged() 
+                            ? "Trim edits are permanent, and can't be undone. Press the trim button to cancel"
+                            : "Trim edits are permanent, and can't be undone. Press the trim button twice to confirm, or close the timeline to cancel",
+        Position:       RenderPosOf(0, TRACK_BUDGET_Y),
+        Scale:          1.2,
+        TextColor:      CustomColor(255, 0, 0, 255),
+        Reevaluation:   InworldTextRev.VisibleToPositionAndString,
+        Clipping:       Clipping.DoNotClip,
+        Spectators:     Spectators.VisibleNever);
+    trimWarnText = LastTextID();
+    CreateCursor();
+
+    WaitUntil(!trimming, 99999);
+
+    DestroyInWorldText(trimWarnText);
+}
+
 rule: "open menu toggle"
 Event.OngoingPlayer
 if (player == host) // the track storage is global, only the host edits
@@ -441,6 +475,8 @@ if (!IsReloadHeld()) // reload + interact x2 is the recording keybind
 void CloseTimeline() playervar "tl - close"
 {
     recordArmed = false; // any other close cancels an armed take, it would start the countdown
+    if (trimming) // only the trim button's confirmation cuts
+        EndTrim();
     timelineOpen = false;
     canUseKeybinds = false;
     firstPersonKeysUp = false; // Space that started playback doesnt detach

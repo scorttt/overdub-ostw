@@ -49,6 +49,7 @@ if (handleTip != Drag.None || (Abs(hoverX) < TRACK_HALF && IsInRange(hoverY, SEE
 
 rule: "drag"
 Event.OngoingPlayer
+if (timelineOpen) // closing it ends a trim, a bracket would move after
 if (IsPrimaryHeld())
 if (IsDragging(player))
 {
@@ -75,8 +76,10 @@ if (IsDragging(player))
             currFrame = Clamp(tickK, trimStart, trimEnd);
             break;
 
+        // in trim mode the focused track's brackets are the trim handles, kept on its frames and a frame apart
         case Drag.LHandle:
-            trimStart = Clamp(tickK, 0, trimEnd);
+        case Drag.TrimFrom:
+            trimStart = trimming ? Clamp(tickK, Max(recStart, 0), trimEnd - 1) : Clamp(tickK, 0, trimEnd);
 
             if (currFrame < trimStart)
             {
@@ -87,7 +90,8 @@ if (IsDragging(player))
             break;
 
         case Drag.RHandle:
-            trimEnd = Clamp(tickK, trimStart, timelineFrames);
+        case Drag.TrimTo:
+            trimEnd = trimming ? Clamp(tickK, trimStart + 1, recStart + recFrames) : Clamp(tickK, trimStart, timelineFrames);
 
             if (currFrame > trimEnd)
             {
@@ -132,6 +136,7 @@ if (IsDragging(player))
                 recStart = tickK;
 
             break;
+
     }
 
     MinWait();

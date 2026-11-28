@@ -131,7 +131,7 @@ if (trackMenuOpen)
         Position:       RenderPosOf(TRACK_MENU_X, TRACK_MENU_TOP_Y - TRACK_DELETE_ALL_ROW * TRACK_MENU_SPACING),
         Scale:          1.5,
         TextColor:      local.confirmId == HIT_DELETE_ALL
-                            ? Color.Red
+                            ? CustomColor(255, 0, 0, 255)
                             : IsHovered(HIT_DELETE_ALL)
                                 ? OPT_HOVER_COLOR
                                 : Color.White,
