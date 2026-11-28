@@ -293,7 +293,16 @@ if (EntityExists(botOwner))
         botStart = TrackStart(botTrack, botOwner);
         botFrames = TrackFrames(botTrack, botOwner);
 
-        if (!IsDummyBot() && (!timelineOpen && playbackActive) != botFacingLocked)
+        if (IsDummyBot() && (botOwner.playbackActive || botOwner.recording) == botNamed)
+        {
+            botNamed = !botNamed;
+            if (botNamed)
+                StartForcingDummyBotName(player, <"Track <0>", botTrack + 1>);
+            else
+                StopForcingDummyBotName(player);
+        }
+
+        if (!IsDummyBot() &&(!timelineOpen && playbackActive) != botFacingLocked)
         {
             botFacingLocked = !botFacingLocked;
             if (botFacingLocked)
