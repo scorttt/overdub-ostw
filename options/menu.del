@@ -160,7 +160,6 @@ if (expandedOpt != Item.None || confirmItem != Item.None || optDrag != Item.None
     expandedOpt = Item.None;
     confirmItem = Item.None;
     optDrag = Item.None;
-    optLabelsFresh = false;
     LayoutOptions();
 }
 

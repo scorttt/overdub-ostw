@@ -174,34 +174,28 @@ if (timelineOpen)
 }
 
 playervar Number handleTip;
-playervar Number[] handleTipTexts!;
+playervar Number handleTipText!;
 
-// the frame timestamp s shows: a trim handle's (s = 0), or a hovered or slid track's start (s = 0, 0 when before frame 0) and end
-// (s = 1). picked by Drag's order, LHandle, RHandle then Track
-Number HandleTipFrame(Number s):
-    [local.trimStart, local.trimEnd, Max(local.trackStart[local.slideTrack], 0), TrackEnd(local.slideTrack)][local.handleTip - Drag.LHandle + s];
+// a hovered or dragged trim handle's frame. a track's times are its own timestamps on the labels' row
+Number HandleTipFrame(): local.handleTip == Drag.LHandle ? local.trimStart : local.trimEnd;
 
 rule: "handle timestamp"
 Event.OngoingPlayer
-if (handleTip != Drag.None)
+if (handleTip >= Drag.LHandle)
+if (handleTip <= Drag.RHandle)
 {
-    // the second only for a track. a track label's times are on the labels' row
-    handleTipTexts = [];
-    for (Number s! = 0; s < 2; s++)
-    {
-        CreateInWorldText(
-            VisibleTo:      Once(s) == 0 || local.handleTip == Drag.Track ? player : null,
-            Header:         [HandleTipFrame(Once(s))].Map(f => FormattedFrameToSec(f)).First, // mapped, so the frame isnt spelled out 4 times
-            Position:       UiPos(FrameToTrackX(HandleTipFrame(Once(s))), local.handleTip == Drag.Track ? Ui.TrackEnds : Ui.HandleTime),
-            Scale:          0.65,
-            TextColor:      Color.White,
-            Reevaluation:   InworldTextRev.VisibleToPositionAndString,
-            Clipping:       Clipping.DoNotClip,
-            Spectators:     Spectators.VisibleNever);
-        handleTipTexts += LastTextID();
-    }
+    CreateInWorldText(
+        VisibleTo:      player,
+        Header:         [HandleTipFrame()].Map(f => FormattedFrameToSec(f)).First, // mapped, so the frame isnt spelled out 4 times
+        Position:       UiPos(FrameToTrackX(HandleTipFrame()), Ui.HandleTime),
+        Scale:          0.65,
+        TextColor:      Color.White,
+        Reevaluation:   InworldTextRev.VisibleToPositionAndString,
+        Clipping:       Clipping.DoNotClip,
+        Spectators:     Spectators.VisibleNever);
+    handleTipText = LastTextID();
 
-    WaitUntil(handleTip == Drag.None, 99999);
+    WaitUntil(handleTip < Drag.LHandle || handleTip > Drag.RHandle, 99999);
 
-    DestroyTexts(handleTipTexts);
+    DestroyInWorldText(handleTipText);
 }
