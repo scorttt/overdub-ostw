@@ -80,13 +80,13 @@ playervar Boolean[] snapIgnore; // track busy for the entire snap window (e.g. s
 // track t at frame f into snapState, read from the track's storage
 void SampleState(Number t!, Number f!) playervar "playback - sample state"
 {
-    Number s! = f - TrackStart(t, player);
-    if (!TrackPlays(t) || s < 0 || s >= TrackFrames(t, player))
+    tickK = f - TrackStart(t, player); // ReadTrackSample uses tickI and tickJ
+    if (!TrackPlays(t) || tickK < 0 || tickK >= TrackFrames(t, player))
     {
         snapState = Snap.None;
         return;
     }
-    ReadTrackSample(t, s);
+    ReadTrackSample(t, tickK);
     snapState = readCtrl.Y % Bit.Ground >= Bit.UsingAb1 ? Snap.Busy : Snap.Idle; // any ability in use
 }
 

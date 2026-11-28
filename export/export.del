@@ -256,10 +256,10 @@ void ExportTracks() playervar "export - export"
 
     Number frames! = 0;
     String heroes! = "";
-    for (Number k! = 0; k < ids.Length; k++)
+    for (tickI = 0; tickI < ids.Length; tickI++)
     {
-        frames += trackFrames[ids[k]];
-        heroes = k == 0 ? <"<0>", trackHero[ids[k]]> : <"<0>, <1>", heroes, trackHero[ids[k]]>;
+        frames += trackFrames[ids[tickI]];
+        heroes = tickI == 0 ? <"<0>", trackHero[ids[tickI]]> : <"<0>, <1>", heroes, trackHero[ids[tickI]]>;
     }
     expDone = 0;
     expWaitAt = 0;

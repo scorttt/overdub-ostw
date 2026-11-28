@@ -222,10 +222,10 @@ if (!timelineOpen)
     // take replaces the focused track, only other tracks count toward MAX_TOTAL_SAMPLES
     recOthers = 0;
     
-    for (Number t! = 0; t < MAX_TRACKS; t++)
+    for (tickI = 0; tickI < MAX_TRACKS; tickI++)
     {
-        if (t != focusedTrack)
-            recOthers += trackFrames[t];
+        if (tickI != focusedTrack)
+            recOthers += trackFrames[tickI];
     }
     
     if (recOthers >= MAX_TOTAL_SAMPLES)
@@ -349,13 +349,16 @@ void StartRecording()
     {
         ResetHeroConsumables();
         recStart = currFrame;
-        recTrimEnd = HasRecording() && trimEnd < timelineFrames && trimEnd > recStart ? trimEnd : 0;
+    }
+    recTrimEnd = HasRecording() && trimEnd < timelineFrames && trimEnd > recStart ? trimEnd : 0;
+
+    if (punchFrame == WHOLE_TAKE)
+    {
         BeginTake(focusedTrack);
         recFrames = 0;
     }
     else
     {
-        recTrimEnd = trimEnd < timelineFrames && trimEnd > recStart ? trimEnd : 0;
         recFrames = currFrame - recStart;
         BeginPunch(focusedTrack, recFrames);
     }
@@ -389,7 +392,9 @@ void StopRecording() playervar "rec - stop recording"
     if (HasRecording())
         async! FinishTake(focusedTrack);
 
-    SmallMessage(player, <"Track <0> saved: <1> long with <2> frames", focusedTrack + 1, FormattedFrameToSec(recFrames), recFrames>);
+    tickK = recFrames;
+    FrameText();
+    SmallMessage(player, <"Track <0> saved: <1> long with <2> frames", focusedTrack + 1, frameText, recFrames>);
 }
 
 void FinishTake(Number t!) playervar "rec - finish take"

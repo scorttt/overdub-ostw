@@ -107,6 +107,6 @@ void PasteTrack(Number t!) playervar "track - paste"
 
 void DeleteAllTracks() playervar "track - delete all tracks"
 {
-    for (Number t! = 0; t < MAX_TRACKS; t++)
-        DeleteTrack(t);
+    for (tickJ = 0; tickJ < MAX_TRACKS; tickJ++) // DeleteTrack uses tickK
+        DeleteTrack(tickJ);
 }

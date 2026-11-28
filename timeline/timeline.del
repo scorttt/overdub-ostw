@@ -250,7 +250,7 @@ void CreateCursor() "tl - create cursor"
 
 // the timeline, track menu and options page that were shown, the focused track and how many tracks have a marker, when the cursor was last made
 playervar Number cursorShown!;
-Number CursorShownNow(): timelineOpen + 2 * trackMenuOpen + 4 * OptionsShown() + 8 * focusedTrack + 128 * trackFrames.Filter(f => f > 0).Length;
+Number CursorShownNow(): timelineOpen + 2 * trackMenuOpen + 4 * OptionsShown() + 8 * focusedTrack + 128 * TrackCount();
 
 // texts that appear after the cursor is drawn over it, so recreate the cursor once text visibilty changes or creation happens
 // waits a tick so "track markers" has put the focused track's marker on top first
@@ -300,52 +300,52 @@ if (player == host)
 if (TRACK_IDS.IsTrueForAny(t => (trackFrames[t] > 0 && (timelineOpen || closing)) != markerTracks.Contains(t)) || markerTop != CursorShownNow())
 {
     markerTop = CursorShownNow();
-    for (Number i! = 0; i < MAX_TRACKS; i++) // DestroyTexts counts with tickI
+    for (tickJ = 0; tickJ < MAX_TRACKS; tickJ++) // DestroyTexts counts with tickI
     {
-        if (trackFrames[i] > 0 && (timelineOpen || closing) && (!markerTracks.Contains(i) || (i == focusedTrack && timelineOpen)))
+        if (trackFrames[tickJ] > 0 && (timelineOpen || closing) && (!markerTracks.Contains(tickJ) || (tickJ == focusedTrack && timelineOpen)))
         {
             Number[] ids! = [];
             CreateInWorldText(
-                VisibleTo:      TimelineVisible() && local.trackFrames[Once(i)] > 0 ? local : null,
-                Header:         <"T<0>", i + 1>,
-                Position:       UiPos(FrameToTrackX(TrackLabelFrame(Once(i))), Ui.TrackEnds),
+                VisibleTo:      TimelineVisible() && local.trackFrames[Once(tickJ)] > 0 ? local : null,
+                Header:         <"T<0>", tickJ + 1>,
+                Position:       UiPos(FrameToTrackX(TrackLabelFrame(Once(tickJ))), Ui.TrackEnds),
                 Scale:          1,
-                TextColor:      local.focusedTrack == Once(i)
+                TextColor:      local.focusedTrack == Once(tickJ)
                                     ? Color.White
-                                    : Once(TRACK_COLORS[i]),
+                                    : Once(TRACK_COLORS[tickJ]),
                 Reevaluation:   InworldTextRev.VisibleToPositionAndColor,
                 Clipping:       Clipping.DoNotClip,
                 Spectators:     Spectators.VisibleNever);
             ids += LastTextID();
 
-            for (Number s! = 0; s < 2; s++)
+            for (tickK = 0; tickK < 2; tickK++)
             {
                 CreateInWorldText(
-                    VisibleTo:      TimelineVisible() && local.trackFrames[Once(i)] > 0 ? local : null,
-                    Header:         s != 1 ? "[" : "]",
-                    Position:       UiPos(FrameToTrackX(Max(TrackStart(Once(i)) + Once(s) * TrackFrames(Once(i)), 0)), Ui.Seeker, 0.0080),
+                    VisibleTo:      TimelineVisible() && local.trackFrames[Once(tickJ)] > 0 ? local : null,
+                    Header:         tickK != 1 ? "[" : "]",
+                    Position:       UiPos(FrameToTrackX(Max(TrackStart(Once(tickJ)) + Once(tickK) * TrackFrames(Once(tickJ)), 0)), Ui.Seeker, 0.0080),
                     Scale:          1.90,
-                    TextColor:      local.dragTarget == Drag.Track && local.slideTrack == Once(i)
+                    TextColor:      local.dragTarget == Drag.Track && local.slideTrack == Once(tickJ)
                                         ? OPT_HOVER_COLOR
-                                        : local.focusedTrack == Once(i)
+                                        : local.focusedTrack == Once(tickJ)
                                             ? Color.White
-                                            : Once(TRACK_COLORS[i]),
+                                            : Once(TRACK_COLORS[tickJ]),
                     Reevaluation:   InworldTextRev.VisibleToPositionAndColor,
                     Clipping:       Clipping.DoNotClip,
                     Spectators:     Spectators.VisibleNever);
                 ids += LastTextID();
             }
 
-            if (markerTracks.Contains(i))
-                DestroyTexts(markerTexts[i]);
+            if (markerTracks.Contains(tickJ))
+                DestroyTexts(markerTexts[tickJ]);
             else
-                markerTracks += i;
-            markerTexts[i] = ids;
+                markerTracks += tickJ;
+            markerTexts[tickJ] = ids;
         }
-        else if (markerTracks.Contains(i) && (trackFrames[i] == 0 || !(timelineOpen || closing)))
+        else if (markerTracks.Contains(tickJ) && (trackFrames[tickJ] == 0 || !(timelineOpen || closing)))
         {
-            DestroyTexts(markerTexts[i]);
-            markerTracks -= i;
+            DestroyTexts(markerTexts[tickJ]);
+            markerTracks -= tickJ;
         }
     }
 
@@ -355,7 +355,7 @@ if (TRACK_IDS.IsTrueForAny(t => (trackFrames[t] > 0 && (timelineOpen || closing)
 
 // each track's start (t) and end (t + MAX_TRACKS) frame and timestamp, a start before frame 0 is 0
 playervar String[] trackTimes;
-playervar Number[] timeFrames!;
+playervar Number[] timeFrames; // plain, a slide changes it every tick
 playervar Number[] timeTexts!;
 playervar Number[] timeTracks!; // the tracks with frames when the timestamps were made
 
@@ -363,7 +363,6 @@ rule: "track times"
 Event.OngoingPlayer
 if (timelineOpen)
 if (!recording)
-if (dragTarget != Drag.Track)
 if (TRACK_IDS.IsTrueForAny(t => Max(TrackStart(t, player), 0) != timeFrames[t] || TrackEnd(t, player) != timeFrames[t + MAX_TRACKS]))
 {
     timeFrames = TRACK_IDS.Map(t => Max(TrackStart(t, player), 0)).Append(TRACK_IDS.Map(t => TrackEnd(t, player)));
@@ -379,14 +378,14 @@ if (timelineOpen)
     timeTracks = TRACK_IDS.Filter(t => TrackFrames(t, player) > 0);
     Number[] ids! = [];
     
-    for (Number i! = 0; i < 2 * MAX_TRACKS; i++)
+    for (tickJ = 0; tickJ < 2 * MAX_TRACKS; tickJ++)
     {
-        if (timeTracks.Contains(i % MAX_TRACKS))
+        if (timeTracks.Contains(tickJ % MAX_TRACKS))
         {
             CreateInWorldText(
-                VisibleTo:      !local.recording && (local.handleTip != Drag.Track || local.slideTrack != Once(i % MAX_TRACKS)) ? player : null,
-                Header:         local.trackTimes[Once(i)],
-                Position:       UiPos(FrameToTrackX(local.timeFrames[Once(i)]), Ui.TrackEnds),
+                VisibleTo:      !local.recording ? player : null,
+                Header:         local.trackTimes[Once(tickJ)],
+                Position:       UiPos(FrameToTrackX(local.timeFrames[Once(tickJ)]), Ui.TrackEnds),
                 Scale:          0.65,
                 TextColor:      Color.White,
                 Reevaluation:   InworldTextRev.VisibleToPositionAndString,

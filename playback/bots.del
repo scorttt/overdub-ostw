@@ -99,9 +99,12 @@ void SpawnIdleTrackBot(Number t!) playervar "bot - spawn idle bot"
 
 void DestroyTrackBot(Number t!) playervar "bot - destroy track bot"
 {
-    if (EntityExists(trackBot[t]))
-        DestroyDummyBot(TeamOf(trackBot[t]), SlotOf(trackBot[t]));
-    trackBot[t] = null;
+    tickK = t;
+    
+    if (EntityExists(trackBot[tickK]))
+        DestroyDummyBot(TeamOf(trackBot[tickK]), SlotOf(trackBot[tickK]));
+        
+    trackBot[tickK] = null;
 }
 
 void ToggleTrackHidden(Number t!) playervar "bot - toggle track hidden"
@@ -567,20 +570,21 @@ if (EntityExists(botOwner))
 
                 // bot faces its lead sample like position does, the human's camera turn isnt measured
                 // throttle leads by THROTTLE_LEAD while in the window's chunk
+                tickK = tickI % CHUNK_SIZE;
                 if (Floor(tickI / CHUNK_SIZE) == botWinC)
                 {
-                    botForcePos = botChunkA[tickI % CHUNK_SIZE].Pos;
-                    readPos = botChunkA[Max(tickI % CHUNK_SIZE - (CORRECT_LEAD - THROTTLE_LEAD), 0)].Ctrl;
+                    botForcePos = botChunkA[tickK].Pos;
+                    readPos = botChunkA[Max(tickK - (CORRECT_LEAD - THROTTLE_LEAD), 0)].Ctrl;
 
                     if (IsDummyBot())
-                        readLook = botChunkA[tickI % CHUNK_SIZE].Look;
+                        readLook = botChunkA[tickK].Look;
                 }
                 else
                 {
-                    botForcePos = botNextPos[tickI % CHUNK_SIZE];
+                    botForcePos = botNextPos[tickK];
 
                     if (IsDummyBot())
-                        readLook = botNextLook[tickI % CHUNK_SIZE];
+                        readLook = botNextLook[tickK];
                 }
                 botFacing = LookDir(readLook);
                 botThrottle = Vector(readPos.X, 0, readPos.Z);

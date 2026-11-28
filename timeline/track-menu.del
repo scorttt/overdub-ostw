@@ -48,10 +48,10 @@ if (!trackLabelsFresh || ActionHit(hovered) != trackLabelsHover || ActionHit(con
             trackLabels[tickI] = <"<0>Track <1>   <2>",
                 focusedTrack == tickI ? IconString(Icon.ArrowRight) + " " : "",
                 tickI + 1,
-                trackFrames[tickI] > 0
-                    ? <"<0> <1> long, <2> frames", HeroIconString(trackHero[tickI]), frameText, trackFrames[tickI]>
+                tickK > 0
+                    ? <"<0> <1> long, <2> frames", HeroIconString(trackHero[tickI]), frameText, tickK>
                     : "Empty">;
-            tickJ += trackFrames[tickI];
+            tickJ += tickK;
         }
 
         tickK = tickJ;
