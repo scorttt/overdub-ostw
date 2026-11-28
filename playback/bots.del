@@ -41,6 +41,7 @@ playervar Boolean botHoldFocus; // stays where it was while unfocused
 playervar Number botF;          // frame the bot should be at, clamped to the track once driving is decided
 playervar Boolean botDead;      // bots only
 playervar Boolean botResetDue!;
+playervar Boolean botNamed!;    // bots only, forced to the track's name
 
 // playback reads a window of the track instead of storage or a whole copy: the chunk the bot is in and the start of the next one (the forced position aims up to correctLead frames ahead).
 // a whole 2 minute track per bot is too much to copy when multiple bots spawn at once, so a window moves every CHUNK_SIZE frames (2s)
