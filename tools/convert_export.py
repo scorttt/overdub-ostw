@@ -39,9 +39,7 @@ class Converter:
 
     def put(self, values, w):
         for n in values:
-            if n < 0 or n > (4095 if w == 1 else 4096 * 4096 - 1):
-                raise ValueError(f"value {n} out of range for width {w}")
-            self.out += [TABLE[n]] if w == 1 else [TABLE[n // 4096], TABLE[n % 4096]]
+            self.out += G.table_chars(n, w)
 
     def copy(self, cnt, w):
         r = self.at(cnt, w)

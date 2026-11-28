@@ -44,6 +44,13 @@ def near(x):
     return int(whole + math.copysign(1, frac)) if abs(frac) >= 0.5 else int(whole)
 
 
+def table_chars(n, w):
+    """n as w (1 or 2) table chars"""
+    if n < 0 or n > (4095 if w == 1 else ENC_MAX):
+        raise ValueError(f"value {n} out of range for width {w}")
+    return [TABLE[n]] if w == 1 else [TABLE[n // 4096], TABLE[n % 4096]]
+
+
 def wrap(a):
     return a - near(a / 360) * 360
 
@@ -480,13 +487,7 @@ class Encoder:
 
     def put(self, values, w):
         for x in values:
-            n = near(x)
-            if n < 0 or n > (4095 if w == 1 else ENC_MAX):
-                raise ValueError(f"value {n} out of range for width {w}")
-            if w == 1:
-                self.chars.append(TABLE[n])
-            else:
-                self.chars += [TABLE[n // 4096], TABLE[n % 4096]]
+            self.chars += table_chars(near(x), w)
 
     def curve(self, T, c):
         n = T.n
